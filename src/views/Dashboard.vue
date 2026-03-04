@@ -118,14 +118,29 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, watch, nextTick } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 
 onMounted(() => {
   if (!authStore.isLoggedIn) {
-    authStore.initGoogleAuth('g_id_signin_main');
+    nextTick(() => {
+      setTimeout(() => {
+        authStore.initGoogleAuth('g_id_signin_main');
+      }, 150);
+    });
+  }
+})
+
+// Reliable re-render upon logout
+watch(() => authStore.isLoggedIn, (isLoggedIn) => {
+  if (!isLoggedIn) {
+    nextTick(() => {
+      setTimeout(() => {
+        authStore.initGoogleAuth('g_id_signin_main');
+      }, 150);
+    });
   }
 })
 </script>

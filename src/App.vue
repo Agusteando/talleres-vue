@@ -180,9 +180,10 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, watch, nextTick } from 'vue'
 import { useAuthStore } from './stores/auth'
 import { useRoute } from 'vue-router'
+import { logger } from './utils/logger'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -193,12 +194,14 @@ onMounted(() => {
   }
 })
 
-// Ensure Google Button re-renders if the top container becomes available again after navigation
-watch(() => route.path, () => {
-  if (!authStore.isLoggedIn) {
-    setTimeout(() => {
-      authStore.initGoogleAuth('g_id_signin_top');
-    }, 300);
+// Ensure Google Button re-renders if the top container becomes available again after navigation/logout
+watch([() => route.path, () => authStore.isLoggedIn], ([newPath, isLoggedIn]) => {
+  if (!isLoggedIn) {
+    nextTick(() => {
+      setTimeout(() => {
+        authStore.initGoogleAuth('g_id_signin_top');
+      }, 150);
+    });
   }
 })
 </script>
