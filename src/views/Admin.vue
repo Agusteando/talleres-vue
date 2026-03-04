@@ -9,7 +9,7 @@
     <div v-if="!plantel" class="fade-in">
       <div class="text-center mb-5">
         <h2 class="fw-bold text-dark mb-2">Selecciona un Plantel</h2>
-        <p class="text-muted">Elige el campus para administrar sus servicios extracurriculares.</p>
+        <p class="text-muted">Elige el campus para administrar sus listas de servicios extracurriculares.</p>
       </div>
       <div class="row justify-content-center g-4">
         <div class="col-6 col-md-3 col-lg-2" v-for="p in allowedPlanteles" :key="p">
@@ -34,7 +34,7 @@
           </button>
           <div>
             <h3 class="fw-bold mb-0">Servicios: {{ currentTheme.name }}</h3>
-            <small class="opacity-75">Selecciona el taller para administrar.</small>
+            <small class="opacity-75">Selecciona el taller para administrar listados.</small>
           </div>
         </div>
         <button class="btn btn-light text-dark rounded-pill px-4 fw-bold shadow-sm" @click="showAllServices = !showAllServices">
@@ -86,11 +86,6 @@
         <li class="nav-item cursor-pointer" @click="handleRestrictedTab('add')">
           <a class="nav-link rounded-pill fw-semibold px-4 text-dark" :class="{ 'bg-light border': activeTab === 'add' }">
             <i class="fas fa-user-plus me-1"></i> Añadir
-          </a>
-        </li>
-        <li class="nav-item cursor-pointer" @click="activeTab = 'attendance'">
-          <a class="nav-link rounded-pill fw-semibold px-4" :class="{ 'active bg-success text-white': activeTab === 'attendance', 'text-dark': activeTab !== 'attendance' }">
-            <i class="fas fa-clipboard-check me-1"></i> Asistencia Hoy
           </a>
         </li>
         <li class="nav-item cursor-pointer" @click="activeTab = 'history'">
@@ -204,48 +199,6 @@
           <div v-else class="text-center p-5 text-muted bg-light rounded-4 border border-dashed">
             <i class="fas fa-search fa-3x mb-3 opacity-25"></i>
             <h5>Escribe al menos 3 letras para buscar un alumno globalmente</h5>
-          </div>
-        </div>
-
-        <!-- TAB: ATTENDANCE -->
-        <div v-if="activeTab === 'attendance'">
-          <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded-4 border border-success border-opacity-25">
-            <div>
-              <h5 class="mb-0 fw-bold text-success"><i class="fas fa-calendar-day me-2"></i> Asistencia de Hoy</h5>
-              <small class="text-muted">Haz clic sobre un alumno para marcarlo como presente.</small>
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-outline-success rounded-pill fw-semibold px-4" @click="toggleSelectAll">
-                <i class="fas" :class="allSelected ? 'fa-check-square' : 'fa-square'"></i> {{ allSelected ? 'Deseleccionar Todo' : 'Seleccionar Todo' }}
-              </button>
-              <button class="btn btn-success rounded-pill fw-bold px-4 shadow-sm" @click="recordSelectedAttendance" :disabled="selectedForAttendance.length === 0">
-                <i class="fas fa-save me-1"></i> Guardar ({{ selectedForAttendance.length }})
-              </button>
-            </div>
-          </div>
-          
-          <div class="row g-3">
-            <div class="col-6 col-md-3 col-lg-2" v-for="stu in flatStudents" :key="stu.matricula">
-              <div class="card h-100 cursor-pointer attendance-card border-2 rounded-4 position-relative" 
-                   :class="{'border-success bg-success bg-opacity-10 shadow-sm': hasAttendedToday(stu.matricula), 'border-primary shadow': selectedForAttendance.includes(stu.matricula), 'bg-light border-transparent': !hasAttendedToday(stu.matricula) && !selectedForAttendance.includes(stu.matricula)}"
-                   @click="toggleAttendanceSelection(stu.matricula)">
-                <div class="card-body text-center p-3">
-                  <transition name="pop">
-                    <div v-if="selectedForAttendance.includes(stu.matricula) || hasAttendedToday(stu.matricula)" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-50 rounded-4 z-1">
-                      <i class="fas fa-check-circle text-success fa-3x filter-drop-shadow"></i>
-                    </div>
-                  </transition>
-                  
-                  <img v-if="stu.foto" :src="stu.foto" class="rounded-circle mb-2 object-fit-cover shadow-sm" width="65" height="65">
-                  <div v-else class="rounded-circle mb-2 mx-auto d-flex align-items-center justify-content-center shadow-sm bg-white text-secondary" style="width: 65px; height: 65px;">
-                    <i class="fas fa-user fa-xl"></i>
-                  </div>
-                  
-                  <h6 class="small fw-bold mb-0 text-truncate text-dark" :title="stu.nombreCompleto">{{ stu.nombreCompleto }}</h6>
-                  <small class="text-muted" style="font-size: 0.7rem;">{{ stu.grado }} {{ stu.grupo }}</small>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -566,36 +519,6 @@ const removeStudent = async (matricula) => {
   finally { loading.value = false }
 }
 
-// Attendance
-const selectedForAttendance = ref([])
-const allSelected = ref(false)
-
-const toggleAttendanceSelection = (matricula) => {
-  const idx = selectedForAttendance.value.indexOf(matricula)
-  if (idx > -1) selectedForAttendance.value.splice(idx, 1)
-  else selectedForAttendance.value.push(matricula)
-  allSelected.value = selectedForAttendance.value.length === flatStudents.value.length
-}
-
-const toggleSelectAll = () => {
-  if (allSelected.value) selectedForAttendance.value = []
-  else selectedForAttendance.value = flatStudents.value.map(s => s.matricula)
-  allSelected.value = !allSelected.value
-}
-
-const recordSelectedAttendance = async () => {
-  loading.value = true
-  try {
-    await axios.post('https://bot.casitaapps.com/record-attendance-bulk', { matriculas: selectedForAttendance.value, servicio: servicio.value })
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asistencia Guardada', showConfirmButton: false, timer: 2000 })
-    selectedForAttendance.value = []
-    allSelected.value = false
-    fetchAttendance()
-  } catch (e) { Swal.fire('Error', 'No se guardó asistencia', 'error') }
-  finally { loading.value = false }
-}
-
-const hasAttendedToday = (matricula) => hasAttendedOnDay(matricula, new Date().getDate())
 const hasAttendedOnDay = (matricula, day) => {
   const key = `${matricula}-${servicio.value}`
   const arr = attendanceMap.value[key]
@@ -744,13 +667,8 @@ onMounted(() => { if (plantel.value) fetchData() })
 .cursor-pointer { cursor: pointer; }
 .hover-card { transition: transform 0.2s, box-shadow 0.2s; }
 .hover-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
-.attendance-card { transition: all 0.2s; overflow: hidden; }
-.attendance-card:hover { transform: scale(1.02); }
 .border-transparent { border-color: transparent; }
-.filter-drop-shadow { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
 
 .fade-in { animation: fadeIn 0.4s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.pop-enter-active, .pop-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.pop-enter-from, .pop-leave-to { transform: scale(0); opacity: 0; }
 </style>

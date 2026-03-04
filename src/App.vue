@@ -24,6 +24,11 @@
           </router-link>
         </li>
         <li class="nav-item">
+          <router-link to="/workshop" class="nav-link py-3 px-4 rounded-3 text-dark fw-semibold transition-all" :class="{'bg-primary bg-opacity-10 text-primary fw-bold': route.path.startsWith('/workshop')}">
+            <i class="fas fa-clipboard-user w-20px me-2 text-center"></i> Portal Tallerista
+          </router-link>
+        </li>
+        <li class="nav-item">
           <router-link to="/overview" class="nav-link py-3 px-4 rounded-3 text-dark fw-semibold transition-all" active-class="bg-primary bg-opacity-10 text-primary fw-bold">
             <i class="fas fa-chart-line w-20px me-2 text-center"></i> Visión Global
           </router-link>

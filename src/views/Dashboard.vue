@@ -39,7 +39,7 @@
               <i class="fas fa-sliders-h fa-lg"></i>
             </div>
             <h4 class="fw-bold text-dark mb-2">Administración</h4>
-            <p class="text-muted mb-0 small">Añade estudiantes, programa listas por Telegram y registra asistencias globales.</p>
+            <p class="text-muted mb-0 small">Añade estudiantes, programa listas por Telegram y gestiona plantillas.</p>
           </div>
         </router-link>
       </div>
@@ -52,7 +52,20 @@
               <i class="fas fa-chalkboard-user fa-lg"></i>
             </div>
             <h4 class="fw-bold text-dark mb-2">Portal Docente</h4>
-            <p class="text-muted mb-0 small">Visualiza y toma asistencia filtrando por grado, grupo y servicio asignado.</p>
+            <p class="text-muted mb-0 small">Visualiza listas y contactos de los estudiantes regulares por salón.</p>
+          </div>
+        </router-link>
+      </div>
+      
+      <!-- Portal Tallerista -->
+      <div class="col-md-6 col-lg-4">
+        <router-link to="/workshop" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="icon-box bg-danger bg-opacity-10 text-danger mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
+              <i class="fas fa-clipboard-user fa-lg"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Portal Tallerista</h4>
+            <p class="text-muted mb-0 small">Acceso rápido para tomar asistencia de tus talleres asignados (Danza, Música, etc).</p>
           </div>
         </router-link>
       </div>

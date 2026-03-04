@@ -5,6 +5,7 @@ import { logger } from '../utils/logger'
 import Dashboard from '../views/Dashboard.vue'
 import Admin from '../views/Admin.vue'
 import Teacher from '../views/Teacher.vue'
+import Workshop from '../views/Workshop.vue'
 import AtencionPadres from '../views/AtencionPadres.vue'
 import Overview from '../views/Overview.vue'
 import Forbidden from '../views/Forbidden.vue'
@@ -13,6 +14,7 @@ const routes = [
   { path: '/', component: Dashboard, meta: { active: 'dashboard' } },
   { path: '/admin/:plantel?/:servicio?', component: Admin, meta: { active: 'admin' } },
   { path: '/teacher/:servicio?', component: Teacher, meta: { active: 'teacher' } },
+  { path: '/workshop', component: Workshop, meta: { active: 'workshop' } },
   { path: '/atencion-padres/:matricula?', component: AtencionPadres, meta: { active: 'atencion-padres' } },
   { path: '/overview', component: Overview, meta: { active: 'overview', requiresAuth: true, adminOnly: true } },
   { path: '/forbidden', component: Forbidden }
