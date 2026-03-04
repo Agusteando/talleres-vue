@@ -18,7 +18,8 @@ export const getServiceIcon = (servicio) => {
   if (!servicio) return 'fa-star';
   const s = servicio.toLowerCase();
   if (s.includes('fútbol')) return 'fa-futbol';
-  if (s.includes('basquetbol') || s.includes('voleibol')) return 'fa-basketball-ball';
+  if (s.includes('basquetbol')) return 'fa-basketball-ball';
+  if (s.includes('voleibol')) return 'fa-volleyball-ball';
   if (s.includes('tae kwon do')) return 'fa-user-ninja';
   if (s.includes('ballet') || s.includes('jazz') || s.includes('danza')) return 'fa-shoe-prints';
   if (s.includes('teclado') || s.includes('música') || s.includes('band') || s.includes('ensamble')) return 'fa-music';

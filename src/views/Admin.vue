@@ -217,7 +217,7 @@
         <div v-if="activeTab === 'add'">
           <div class="position-relative mb-4" style="max-width: 600px; margin: 0 auto;">
             <i class="fas fa-search position-absolute text-muted fa-lg" style="left: 20px; top: 16px;"></i>
-            <input type="text" class="form-control form-control-lg rounded-pill ps-5 bg-light border-0 shadow-sm" placeholder="Buscar por nombre o matrícula global..." v-model="searchAdd">
+            <input type="text" class="form-control form-control-lg rounded-pill ps-5 bg-light border-0 shadow-sm" placeholder="Buscar por nombre o matrícula en el plantel..." v-model="searchAdd">
           </div>
           
           <div class="row g-3" v-if="addSearchResults.length > 0">
@@ -248,7 +248,7 @@
           </div>
           <div v-else class="text-center p-5 text-muted bg-light rounded-4 border border-dashed">
             <i class="fas fa-search fa-3x mb-3 opacity-25"></i>
-            <h5>Escribe al menos 3 letras para buscar un alumno globalmente</h5>
+            <h5>Escribe al menos 3 letras para buscar un alumno en este plantel</h5>
           </div>
         </div>
 
@@ -651,8 +651,14 @@ const addStudentDialog = (student) => {
     confirmButtonText: 'Por Contrato', confirmButtonColor: '#2D7D46',
     denyButtonText: 'Eventual', denyButtonColor: '#f59e0b',
     cancelButtonText: 'Cancelar',
-    preConfirm: () => { notas = document.getElementById('notas_swal').value; return 0; },
-    preDeny: () => { notas = document.getElementById('notas_swal').value; return 1; }
+    didOpen: () => {
+      const inputEl = document.getElementById('notas_swal');
+      if (inputEl) {
+        inputEl.addEventListener('input', (e) => {
+          notas = e.target.value;
+        });
+      }
+    }
   }).then((res) => {
     if (res.isConfirmed || res.isDenied) submitAddStudent(student, res.isConfirmed ? 0 : 1, notas)
   })

@@ -217,9 +217,11 @@ const toggleServicio = (srv) => {
 
 const evalSteps = () => {
   const sib = siblingsForms.value[activeIdx.value]
-  if (sib.selectedServicios.length > 0 && sib.currentStep < 2) sib.currentStep = 2
-  if (sib.motivo.length >= 10 && sib.currentStep < 3) sib.currentStep = 3
-  if (sib.acciones.length >= 10 && sib.currentStep < 4) sib.currentStep = 4
+  let step = 1
+  if (sib.selectedServicios.length > 0) step = 2
+  if (step === 2 && sib.motivo.length >= 10) step = 3
+  if (step === 3 && sib.acciones.length >= 10) step = 4
+  sib.currentStep = step
 }
 
 const isReadyToSubmit = computed(() => {
