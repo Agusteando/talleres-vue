@@ -1,0 +1,130 @@
+<template>
+  <div class="container py-4">
+    <div class="text-center mb-5 animation-fade-in-up">
+      <div class="d-inline-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm mb-4" style="width: 100px; height: 100px;">
+        <i class="fas fa-layer-group text-primary fa-4x drop-shadow"></i>
+      </div>
+      <div v-if="authStore.isLoggedIn">
+        <h2 class="fw-bold text-dark mb-1">Bienvenido, {{ authStore.user.displayName }}</h2>
+        <p class="text-muted">¿Qué deseas gestionar hoy en Talleres App?</p>
+      </div>
+      <div v-else class="d-flex justify-content-center mt-3">
+        <div id="g_id_signin_main"></div>
+      </div>
+    </div>
+
+    <!-- Bento Grid -->
+    <div class="row g-4 animation-fade-in-up delay-1">
+      
+      <!-- Featured Card -->
+      <div class="col-12 col-lg-8">
+        <a href="/Talleres.apk" target="_blank" class="card h-100 border-0 rounded-4 text-decoration-none text-white featured-card position-relative overflow-hidden shadow">
+          <div class="card-body p-5 d-flex flex-column justify-content-center position-relative z-1">
+            <span class="badge bg-white bg-opacity-25 border border-white text-uppercase tracking-wide rounded-pill px-3 py-2 mb-3 align-self-start" style="font-size: 0.7rem;">
+              <i class="fab fa-android me-1"></i> App Exclusiva
+            </span>
+            <h2 class="fw-bold display-6 mb-2">Talleres Offline</h2>
+            <p class="fs-5 opacity-75 mb-4 max-w-75">Sincroniza, toma asistencia y trabaja en áreas sin conexión a internet.</p>
+            <button class="btn btn-light rounded-pill px-4 py-2 align-self-start fw-bold text-success shadow-sm hover-scale">
+              <i class="fas fa-download me-2"></i> Descargar APK
+            </button>
+          </div>
+          <i class="fas fa-mobile-alt position-absolute text-white opacity-10 fa-10x" style="right: -20px; bottom: -30px; transform: rotate(-15deg);"></i>
+        </a>
+      </div>
+
+      <!-- Admin -->
+      <div class="col-md-6 col-lg-4">
+        <router-link to="/admin" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="icon-box bg-primary bg-opacity-10 text-primary mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
+              <i class="fas fa-sliders-h fa-lg"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Administración</h4>
+            <p class="text-muted mb-0 small">Añade estudiantes, programa listas por Telegram y registra asistencias globales.</p>
+          </div>
+        </router-link>
+      </div>
+
+      <!-- Portal Docente -->
+      <div class="col-md-6 col-lg-4">
+        <router-link to="/teacher" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="icon-box bg-info bg-opacity-10 text-info mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
+              <i class="fas fa-chalkboard-user fa-lg"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Portal Docente</h4>
+            <p class="text-muted mb-0 small">Visualiza y toma asistencia filtrando por grado, grupo y servicio asignado.</p>
+          </div>
+        </router-link>
+      </div>
+
+      <!-- Visión Global -->
+      <div class="col-md-6 col-lg-4">
+        <router-link to="/overview" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="icon-box bg-success bg-opacity-10 text-success mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
+              <i class="fas fa-chart-pie fa-lg"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Visión Global</h4>
+            <p class="text-muted mb-0 small">Monitoreo y analíticas de asistencia en tiempo real con exportación.</p>
+          </div>
+        </router-link>
+      </div>
+
+      <!-- Atención Padres -->
+      <div class="col-md-6 col-lg-4">
+        <router-link to="/atencion-padres" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="icon-box bg-warning bg-opacity-10 text-warning mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
+              <i class="fas fa-users fa-lg"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Atención Padres</h4>
+            <p class="text-muted mb-0 small">Seguimiento de incidencias y fichas para Artes y Deportes.</p>
+          </div>
+        </router-link>
+      </div>
+
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { onMounted } from 'vue'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
+
+onMounted(() => {
+  if (window.google && !authStore.isLoggedIn) {
+    setTimeout(() => {
+      const btn = document.getElementById('g_id_signin_main')
+      if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', shape: 'pill' })
+    }, 500)
+  }
+})
+</script>
+
+<style scoped>
+.featured-card {
+  background: linear-gradient(135deg, #2D7D46 0%, #298E96 100%);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.featured-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 25px -5px rgba(45, 125, 70, 0.3) !important;
+}
+.tool-card { transition: transform 0.2s ease, box-shadow 0.2s ease; border: 1px solid rgba(0,0,0,0.05) !important; }
+.tool-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.06) !important; border-color: transparent !important; }
+.drop-shadow { filter: drop-shadow(0 10px 15px rgba(37, 99, 235, 0.2)); }
+.hover-scale { transition: transform 0.2s; }
+.hover-scale:hover { transform: scale(1.05); }
+
+.animation-fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.delay-1 { animation-delay: 0.1s; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
