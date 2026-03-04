@@ -130,11 +130,11 @@
                 <h6 class="small fw-bold mb-0 text-truncate text-dark w-100" :title="stu.nombreCompleto">{{ stu.nombreCompleto }}</h6>
                 <small class="text-muted d-block mb-2" style="font-size: 0.7rem;">{{ stu.grado }} {{ stu.grupo }}</small>
                 
-                <div class="d-flex align-items-center justify-content-center gap-1 mb-2 position-relative z-2">
-                  <span class="badge bg-white text-secondary border rounded-pill shadow-sm" style="font-size: 0.65rem;" v-if="timeAgo(timelineData[stu.matricula]?.started_at)">
-                    <i class="fas fa-clock text-info"></i> {{ timeAgo(timelineData[stu.matricula]?.started_at) }}
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-2 position-relative z-2 mt-2">
+                  <span class="badge shadow-sm rounded-pill px-2 py-1" :class="isNewStudent(timelineData[stu.matricula]?.started_at) ? 'bg-success text-white border border-success pulse-animation' : 'bg-white text-dark border'" style="font-size: 0.7rem;" v-if="timeAgo(timelineData[stu.matricula]?.started_at)">
+                    <i class="fas fa-clock" :class="isNewStudent(timelineData[stu.matricula]?.started_at) ? 'text-white' : 'text-info'"></i> Antigüedad: {{ timeAgo(timelineData[stu.matricula]?.started_at) }}
                   </span>
-                  <button class="btn btn-sm text-primary p-0 ms-1 bg-transparent border-0" @click.stop="openTimelineModal(stu)" title="Ver Historial"><i class="fas fa-history"></i></button>
+                  <button class="btn btn-sm text-primary p-0 bg-transparent border-0 hover-scale" @click.stop="openTimelineModal(stu)" title="Ver Historial"><i class="fas fa-history fs-6"></i></button>
                 </div>
 
                 <div class="mt-auto d-flex justify-content-center gap-2 position-relative z-2">

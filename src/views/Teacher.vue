@@ -66,7 +66,9 @@
           </div>
           
           <div class="position-absolute top-0 end-0 m-2 mt-5 d-flex flex-column align-items-end gap-1 z-2">
-             <span v-if="isNewStudentInAnyWorkshop(stu)" class="badge bg-success shadow-sm border border-white pulse-animation"><i class="fas fa-star text-warning me-1"></i> NUEVO</span>
+             <span v-if="isNewStudentInAnyWorkshop(stu)" class="badge bg-success shadow-lg border border-white pulse-animation px-3 py-2 fs-6">
+               <i class="fas fa-star text-warning me-1"></i> NUEVO INGRESO
+             </span>
           </div>
           
           <div class="card-body text-center p-4">
@@ -99,9 +101,12 @@
               </div>
             </div>
 
-            <button class="btn btn-sm btn-outline-secondary rounded-pill mt-3 position-relative z-2" @click.stop="openTimelineModal(stu)">
-              <i class="fas fa-history me-1"></i> Ver Historial Talleres
-            </button>
+            <div class="d-flex align-items-center justify-content-center gap-1 mt-3 position-relative z-2">
+              <span class="badge shadow-sm rounded-pill" :class="isNewStudentInAnyWorkshop(stu) ? 'bg-success text-white border border-success pulse-animation' : 'bg-white text-secondary border'" style="font-size: 0.7rem;" v-if="getEarliestActiveStart(stu)">
+                <i class="fas fa-clock" :class="isNewStudentInAnyWorkshop(stu) ? 'text-white' : 'text-info'"></i> Antigüedad: {{ timeAgo(getEarliestActiveStart(stu)) }}
+              </span>
+              <button class="btn btn-sm text-primary p-0 ms-1 bg-transparent border-0 hover-scale" @click.stop="openTimelineModal(stu)" title="Ver Historial Completo"><i class="fas fa-history fa-lg"></i></button>
+            </div>
           </div>
         </div>
       </div>
@@ -181,6 +186,22 @@ const selectedStudents = ref([])
 const currentTheme = computed(() => getPlantelTheme(plantel.value))
 
 // Date Utilities
+const timeAgo = (dateStr) => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return null;
+  const now = new Date();
+  const diffMs = now - d;
+  if (diffMs < 0) return 'Hoy';
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays <= 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  if (diffDays < 30) return `Hace ${Math.floor(diffDays/7)} sem`;
+  if (diffDays < 365) return `Hace ${Math.floor(diffDays/30)} meses`;
+  return `Hace ${Math.floor(diffDays/365)} años`;
+}
+
 const isNewStudent = (dateStr) => {
   if (!dateStr) return false;
   const d = new Date(dateStr);
@@ -199,6 +220,15 @@ const formatDateObj = (dateStr) => {
 // Modal Handlers
 const openTimelineModal = (stu) => { viewingTimelineStu.value = stu; }
 const closeTimelineModal = () => { viewingTimelineStu.value = null; }
+
+const getEarliestActiveStart = (stu) => {
+  const data = timelineData.value[stu.matricula];
+  if (!data || !data.history) return null;
+  const active = data.history.filter(h => h.active);
+  if (!active.length) return null;
+  active.sort((a,b) => new Date(a.started_at) - new Date(b.started_at));
+  return active[0].started_at;
+}
 
 const isNewStudentInAnyWorkshop = (stu) => {
    const data = timelineData.value[stu.matricula];

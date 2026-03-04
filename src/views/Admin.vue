@@ -83,7 +83,7 @@
               <i class="fas fa-arrow-left"></i>
             </button>
             
-            <!-- Quick Switcher Dropdown (Pure Vue to avoid BS JS dependency) -->
+            <!-- Quick Switcher Dropdown -->
             <div class="position-relative">
               <div v-if="showQuickSwitch" class="position-fixed top-0 start-0 w-100 h-100 z-2" @click="showQuickSwitch = false"></div>
               <h2 class="mb-0 fw-bold cursor-pointer d-flex align-items-center gap-2 hover-opacity-100 transition-all position-relative z-3" @click="showQuickSwitch = !showQuickSwitch">
@@ -189,12 +189,14 @@
                         <small class="text-muted font-monospace">{{ stu.matricula }}</small>
                         <p class="mb-0 mt-1 small text-danger fw-semibold text-truncate" v-if="stu.observaciones"><i class="fas fa-exclamation-circle me-1"></i>{{ stu.observaciones }}</p>
                         
-                        <div class="d-flex gap-2 mt-2 align-items-center">
-                           <span class="badge bg-white text-secondary border rounded-pill" style="font-size: 0.65rem;" v-if="timeAgo(timelineData[stu.matricula]?.started_at)">
-                             <i class="fas fa-clock"></i> {{ timeAgo(timelineData[stu.matricula]?.started_at) }} en taller
+                        <div class="d-flex gap-2 mt-2 align-items-center flex-wrap">
+                           <span class="badge rounded-pill shadow-sm" 
+                                 :class="isNewStudent(timelineData[stu.matricula]?.started_at) ? 'bg-success text-white pulse-animation border border-success' : 'bg-white text-secondary border'" 
+                                 style="font-size: 0.65rem;" v-if="timeAgo(timelineData[stu.matricula]?.started_at)">
+                             <i class="fas fa-clock me-1" :class="isNewStudent(timelineData[stu.matricula]?.started_at) ? 'text-white' : ''"></i> Antigüedad: {{ timeAgo(timelineData[stu.matricula]?.started_at) }}
                            </span>
-                           <button class="btn btn-sm text-primary p-0 bg-transparent border-0" @click.stop="openTimelineModal(stu)" title="Ver Historial">
-                             <i class="fas fa-history"></i>
+                           <button class="btn btn-sm text-primary p-0 bg-transparent border-0 ms-1 hover-scale" @click.stop="openTimelineModal(stu)" title="Ver Historial">
+                             <i class="fas fa-history fs-6"></i>
                            </button>
                         </div>
                       </div>
@@ -659,7 +661,8 @@ const addStudentDialog = (student) => {
 const submitAddStudent = async (student, eventual, notas) => {
   loading.value = true
   try {
-    await axios.post('https://bot.casitaapps.com/add-student', { plantel: plantel.value, servicio: servicio.value, matricula: student.matricula, eventual, notas })
+    // IMPORTANT: Pointing Add to matricula.casitaapps.com
+    await axios.post('https://matricula.casitaapps.com/add-student', { plantel: plantel.value, servicio: servicio.value, matricula: student.matricula, eventual, notas })
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Agregado', showConfirmButton: false, timer: 2000 })
     fetchData()
   } catch (e) {
@@ -674,7 +677,8 @@ const removeStudent = async (matricula) => {
 
   loading.value = true
   try {
-    await axios.post('https://bot.casitaapps.com/remove-student', { servicio: servicio.value, matricula })
+    // IMPORTANT: Pointing Remove to matricula.casitaapps.com
+    await axios.post('https://matricula.casitaapps.com/remove-student', { servicio: servicio.value, matricula })
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000 })
     fetchData()
   } catch (e) { logger.error('Remove student failed', e); Swal.fire('Error', 'Fallo al eliminar', 'error') }
