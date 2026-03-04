@@ -7,15 +7,17 @@ import Admin from '../views/Admin.vue'
 import Teacher from '../views/Teacher.vue'
 import Workshop from '../views/Workshop.vue'
 import AtencionPadres from '../views/AtencionPadres.vue'
+import StudentHistory from '../views/StudentHistory.vue'
 import Overview from '../views/Overview.vue'
 import Forbidden from '../views/Forbidden.vue'
 
 const routes = [
   { path: '/', component: Dashboard, meta: { active: 'dashboard' } },
-  { path: '/admin/:plantel?/:servicio?', component: Admin, meta: { active: 'admin' } },
+  { path: '/admin/:plantel?/:servicio?', component: Admin, meta: { active: 'admin', requiresAuth: true, adminOnly: true } },
   { path: '/teacher/:servicio?', component: Teacher, meta: { active: 'teacher' } },
   { path: '/workshop', component: Workshop, meta: { active: 'workshop' } },
   { path: '/atencion-padres/:matricula?', component: AtencionPadres, meta: { active: 'atencion-padres' } },
+  { path: '/student-history', component: StudentHistory, meta: { active: 'student-history' } },
   { path: '/overview', component: Overview, meta: { active: 'overview', requiresAuth: true, adminOnly: true } },
   { path: '/forbidden', component: Forbidden }
 ]

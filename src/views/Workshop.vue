@@ -1,8 +1,13 @@
 <template>
   <div class="workshop-view position-relative py-3">
-    <!-- Loader -->
-    <div v-if="loading" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75 z-3">
+    <!-- Loader Minimal (Non-blocking usually) -->
+    <div v-if="loading && !currentWorkshop" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75 z-3">
       <div class="spinner-border text-danger border-4" style="width: 3rem; height: 3rem;" role="status"></div>
+    </div>
+
+    <!-- Background Sync Indicator -->
+    <div v-if="loading && currentWorkshop" class="position-fixed bottom-0 end-0 m-4 bg-dark text-white rounded-pill px-4 py-2 shadow-lg z-3 animation-fade">
+      <i class="fas fa-sync-alt fa-spin me-2"></i> Actualizando lista...
     </div>
 
     <!-- 1. SHORTCUTS SELECTION -->
@@ -12,7 +17,7 @@
           <i class="fas fa-clipboard-user fa-2x"></i>
         </div>
         <h2 class="fw-bold text-dark mb-2">Mis Talleres</h2>
-        <p class="text-muted">Selecciona un taller para tomar asistencia rápidamente.</p>
+        <p class="text-muted fs-5">Selecciona un taller para tomar asistencia rápidamente.</p>
       </div>
       
       <div class="row justify-content-center g-4 mb-5">
@@ -23,11 +28,11 @@
                 <i class="fas fa-times"></i>
               </button>
               <div class="mb-3 mx-auto rounded-circle d-flex align-items-center justify-content-center text-white shadow-sm" 
-                   :style="{ background: getPlantelTheme(shortcut.plantel).gradient, width: '60px', height: '60px' }">
-                <i class="fas fa-xl" :class="getServiceIcon(shortcut.servicio)"></i>
+                   :style="{ background: getPlantelTheme(shortcut.plantel).gradient, width: '70px', height: '70px' }">
+                <i class="fas fa-2x" :class="getServiceIcon(shortcut.servicio)"></i>
               </div>
-              <h5 class="fw-bold text-dark mb-1">{{ shortcut.servicio }}</h5>
-              <span class="badge bg-light text-secondary border rounded-pill px-3 py-1">{{ shortcut.plantel }}</span>
+              <h4 class="fw-bold text-dark mb-1">{{ shortcut.servicio }}</h4>
+              <span class="badge bg-light text-secondary border rounded-pill px-3 py-2 mt-1">{{ shortcut.plantel }}</span>
             </div>
           </div>
         </div>
@@ -36,10 +41,10 @@
         <div class="col-12 col-md-4 col-lg-3">
           <div class="card h-100 border-2 border-dashed shadow-none hover-card cursor-pointer rounded-4 bg-transparent d-flex align-items-center justify-content-center min-h-200" @click="showAddModal = true" style="min-height: 200px;">
             <div class="text-center text-muted">
-              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width: 50px; height: 50px;">
-                <i class="fas fa-plus fa-lg"></i>
+              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3 transition-transform" style="width: 60px; height: 60px;">
+                <i class="fas fa-plus fa-xl"></i>
               </div>
-              <h6 class="fw-bold mb-0">Agregar Taller</h6>
+              <h5 class="fw-bold mb-0">Agregar Taller</h5>
             </div>
           </div>
         </div>
@@ -55,23 +60,33 @@
           </button>
           <div>
             <h3 class="fw-bold mb-0">{{ currentWorkshop.servicio }}</h3>
-            <small class="opacity-75"><i class="fas fa-map-marker-alt me-1"></i> {{ currentWorkshop.plantel }} &bull; {{ studentsList.length }} Alumnos</small>
+            <span class="opacity-75 d-block mt-1"><i class="fas fa-map-marker-alt me-1"></i> {{ currentWorkshop.plantel }} &bull; {{ studentsList.length }} Alumnos</span>
           </div>
         </div>
-        <button class="btn btn-light text-dark rounded-pill px-4 fw-bold shadow-sm" @click="recordSelectedAttendance" :disabled="selectedForAttendance.length === 0">
-          <i class="fas fa-save me-1"></i> Guardar Asistencia ({{ selectedForAttendance.length }})
+        <button class="btn btn-light text-dark rounded-pill px-4 py-2 fw-bold shadow-sm d-flex align-items-center gap-2" @click="recordSelectedAttendance" :disabled="selectedForAttendance.length === 0">
+          <i class="fas fa-save fa-lg text-success"></i> Guardar Asistencia <span class="badge bg-success rounded-pill ms-1">{{ selectedForAttendance.length }}</span>
         </button>
       </div>
 
       <div class="bg-white rounded-4 shadow-sm border p-4">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-          <div class="position-relative w-100" style="max-width: 400px;">
+          
+          <div class="position-relative" style="width: 100%; max-width: 350px;">
             <i class="fas fa-search position-absolute text-muted" style="left: 15px; top: 12px;"></i>
             <input type="text" class="form-control rounded-pill ps-5 bg-light border-0 py-2" placeholder="Buscar alumno..." v-model="searchText">
           </div>
-          <button class="btn btn-outline-success rounded-pill fw-semibold px-4" @click="toggleSelectAll">
-            <i class="fas" :class="allSelected ? 'fa-check-square' : 'fa-square'"></i> {{ allSelected ? 'Deseleccionar Todo' : 'Seleccionar Todo' }}
-          </button>
+          
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-secondary rounded-pill fw-semibold px-4" @click="toggleSortMode" :class="{'active bg-secondary text-white': sortMode}">
+              <i class="fas fa-sort me-1"></i> {{ sortMode ? 'Finalizar Orden' : 'Reordenar' }}
+            </button>
+            <button class="btn btn-outline-primary rounded-pill fw-semibold px-4" @click="manualRefresh">
+              <i class="fas fa-sync-alt me-1"></i> Refrescar
+            </button>
+            <button class="btn btn-outline-success rounded-pill fw-semibold px-4" @click="toggleSelectAll">
+              <i class="fas" :class="allSelected ? 'fa-check-square' : 'fa-square'"></i> {{ allSelected ? 'Deseleccionar Todo' : 'Seleccionar Todo' }}
+            </button>
+          </div>
         </div>
 
         <div v-if="filteredStudents.length === 0" class="text-center py-5 text-muted bg-light rounded-4 border border-dashed">
@@ -79,25 +94,42 @@
           <h5>No hay alumnos que coincidan.</h5>
         </div>
 
+        <!-- Student Grid -->
         <div class="row g-3">
-          <div class="col-6 col-md-3 col-lg-2" v-for="stu in filteredStudents" :key="stu.matricula">
-            <div class="card h-100 cursor-pointer attendance-card border-2 rounded-4 position-relative" 
-                 :class="{'border-success bg-success bg-opacity-10 shadow-sm': hasAttendedToday(stu.matricula), 'border-primary shadow': selectedForAttendance.includes(stu.matricula), 'bg-light border-transparent': !hasAttendedToday(stu.matricula) && !selectedForAttendance.includes(stu.matricula)}"
-                 @click="toggleAttendanceSelection(stu.matricula)">
-              <div class="card-body text-center p-3">
+          <div class="col-6 col-md-4 col-lg-3 col-xl-2" v-for="(stu, index) in filteredStudents" :key="stu.matricula">
+            <div class="card h-100 attendance-card border-2 rounded-4 position-relative" 
+                 :class="{'border-success bg-success bg-opacity-10 shadow-sm': hasAttendedToday(stu.matricula), 'border-primary shadow': selectedForAttendance.includes(stu.matricula), 'bg-light border-transparent': !hasAttendedToday(stu.matricula) && !selectedForAttendance.includes(stu.matricula)}">
+              
+              <!-- Sorting Controls Overlay -->
+              <div v-if="sortMode" class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 rounded-3 d-flex flex-column justify-content-center align-items-center z-2 gap-3 p-3">
+                <button class="btn btn-light rounded-circle shadow-sm" @click.stop="moveStudent(index, -1)" :disabled="index === 0"><i class="fas fa-arrow-up"></i></button>
+                <span class="badge bg-white text-dark fw-bold rounded-pill">Pos {{ index + 1 }}</span>
+                <button class="btn btn-light rounded-circle shadow-sm" @click.stop="moveStudent(index, 1)" :disabled="index === filteredStudents.length - 1"><i class="fas fa-arrow-down"></i></button>
+              </div>
+
+              <!-- Main Card Body -->
+              <div class="card-body text-center p-3 d-flex flex-column h-100 cursor-pointer" @click="!sortMode && toggleAttendanceSelection(stu.matricula)">
                 <transition name="pop">
-                  <div v-if="selectedForAttendance.includes(stu.matricula) || hasAttendedToday(stu.matricula)" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-50 rounded-4 z-1">
+                  <div v-if="selectedForAttendance.includes(stu.matricula) || hasAttendedToday(stu.matricula)" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-50 rounded-4 z-1" style="pointer-events: none;">
                     <i class="fas fa-check-circle text-success fa-3x filter-drop-shadow"></i>
                   </div>
                 </transition>
                 
-                <img v-if="stu.foto" :src="stu.foto" class="rounded-circle mb-2 object-fit-cover shadow-sm" width="65" height="65">
-                <div v-else class="rounded-circle mb-2 mx-auto d-flex align-items-center justify-content-center shadow-sm bg-white text-secondary" style="width: 65px; height: 65px;">
-                  <i class="fas fa-user fa-xl"></i>
+                <div class="mb-2 position-relative d-inline-block mx-auto">
+                  <img v-if="stu.foto" :src="stu.foto" class="rounded-circle object-fit-cover shadow-sm bg-white" width="70" height="70">
+                  <div v-else class="rounded-circle d-flex align-items-center justify-content-center shadow-sm bg-white text-secondary" style="width: 70px; height: 70px;">
+                    <i class="fas fa-user fa-xl"></i>
+                  </div>
                 </div>
                 
-                <h6 class="small fw-bold mb-0 text-truncate text-dark" :title="stu.nombreCompleto">{{ stu.nombreCompleto }}</h6>
-                <small class="text-muted" style="font-size: 0.7rem;">{{ stu.grado }} {{ stu.grupo }}</small>
+                <h6 class="small fw-bold mb-0 text-truncate text-dark w-100" :title="stu.nombreCompleto">{{ stu.nombreCompleto }}</h6>
+                <small class="text-muted d-block mb-2" style="font-size: 0.7rem;">{{ stu.grado }} {{ stu.grupo }}</small>
+                
+                <div class="mt-auto d-flex justify-content-center gap-2 position-relative z-2">
+                  <button class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm" @click.stop="openIncidenciaModal(stu)" title="Añadir Nota / Incidencia" :disabled="sortMode">
+                    <i class="fas fa-exclamation-triangle"></i> Nota
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -111,25 +143,25 @@
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
           <div class="modal-header border-bottom-0 pb-0">
-            <h5 class="modal-title fw-bold text-dark">Agregar Taller</h5>
+            <h5 class="modal-title fw-bold text-dark">Agregar Taller a Favoritos</h5>
             <button type="button" class="btn-close" @click="closeAddModal"></button>
           </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label fw-semibold">1. Plantel</label>
-              <select class="form-select rounded-pill" v-model="newShortcutPlantel" @change="fetchServicesForAdd">
-                <option :value="null">Seleccione Plantel...</option>
+          <div class="modal-body p-4">
+            <div class="mb-4">
+              <label class="form-label fw-semibold text-muted">1. Selecciona el Plantel</label>
+              <select class="form-select form-select-lg rounded-pill bg-light border-0 shadow-sm" v-model="newShortcutPlantel" @change="fetchServicesForAdd">
+                <option :value="null">Plantel...</option>
                 <option v-for="p in allowedPlanteles" :key="p" :value="p">{{ p }}</option>
               </select>
             </div>
-            <div class="mb-4 position-relative">
-              <label class="form-label fw-semibold">2. Taller (Servicio)</label>
-              <select class="form-select rounded-pill" v-model="newShortcutServicio" :disabled="!newShortcutPlantel || fetchingServices">
-                <option :value="null">{{ fetchingServices ? 'Cargando...' : 'Seleccione Taller...' }}</option>
+            <div class="mb-5 position-relative">
+              <label class="form-label fw-semibold text-muted">2. Selecciona el Taller (Servicio)</label>
+              <select class="form-select form-select-lg rounded-pill bg-light border-0 shadow-sm" v-model="newShortcutServicio" :disabled="!newShortcutPlantel || fetchingServices">
+                <option :value="null">{{ fetchingServices ? 'Cargando listado...' : 'Taller...' }}</option>
                 <option v-for="s in availableServicesForAdd" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
-            <button class="btn btn-danger w-100 rounded-pill py-2 fw-bold" @click="saveNewShortcut" :disabled="!newShortcutPlantel || !newShortcutServicio">
+            <button class="btn btn-danger w-100 rounded-pill py-3 fw-bold shadow-sm" @click="saveNewShortcut" :disabled="!newShortcutPlantel || !newShortcutServicio">
               Guardar en Mis Talleres
             </button>
           </div>
@@ -158,18 +190,18 @@ const availableServicesForAdd = ref([])
 
 const currentWorkshop = ref(null)
 const studentsList = ref([])
+const customSortOrder = ref([]) 
 const attendanceMap = ref({})
 const selectedForAttendance = ref([])
 const searchText = ref('')
 const allSelected = ref(false)
+const sortMode = ref(false)
 
 const allowedPlanteles = ["PREET", "PREEM", "PT", "PM", "ST", "SM", "ISM", "DM", "CM", "CT"]
 
 onMounted(() => {
   const stored = localStorage.getItem('workshop_shortcuts')
-  if (stored) {
-    savedShortcuts.value = JSON.parse(stored)
-  }
+  if (stored) savedShortcuts.value = JSON.parse(stored)
 })
 
 const fetchServicesForAdd = async () => {
@@ -213,27 +245,73 @@ const removeShortcut = (idx) => {
   localStorage.setItem('workshop_shortcuts', JSON.stringify(savedShortcuts.value))
 }
 
+const getCacheKey = () => `ws_cache_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
+const getSortKey = () => `ws_sort_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
+
+const applySortOrder = (list) => {
+  if (customSortOrder.value.length === 0) return list;
+  return [...list].sort((a, b) => {
+    const idxA = customSortOrder.value.indexOf(a.matricula);
+    const idxB = customSortOrder.value.indexOf(b.matricula);
+    if (idxA === -1 && idxB === -1) return a.nombreCompleto.localeCompare(b.nombreCompleto);
+    if (idxA === -1) return 1;
+    if (idxB === -1) return -1;
+    return idxA - idxB;
+  });
+}
+
 const openWorkshop = async (shortcut) => {
-  loading.value = true
   currentWorkshop.value = shortcut
   searchText.value = ''
   selectedForAttendance.value = []
   allSelected.value = false
-  studentsList.value = []
-  attendanceMap.value = {}
+  sortMode.value = false
+  
+  // Load custom sort order
+  const savedSort = localStorage.getItem(getSortKey())
+  customSortOrder.value = savedSort ? JSON.parse(savedSort) : []
 
+  // Fast Render from Cache
+  const cachedData = localStorage.getItem(getCacheKey())
+  if (cachedData) {
+    studentsList.value = applySortOrder(JSON.parse(cachedData))
+    await fetchAttendance() // Render cached list instantly, fetch attendance in background
+  } else {
+    loading.value = true // Block UI only if no cache exists
+  }
+
+  // Background Sync Data
+  await fetchWorkshopData()
+}
+
+const manualRefresh = async () => {
+  loading.value = true
+  await fetchWorkshopData()
+  await fetchAttendance()
+  loading.value = false
+}
+
+const fetchWorkshopData = async () => {
+  if(!currentWorkshop.value) return;
+  loading.value = true;
   try {
-    const res = await axios.get(`https://matricula.casitaapps.com/fetch-servicios-data?plantel=${shortcut.plantel}`)
-    if (res.data && res.data[shortcut.plantel] && res.data[shortcut.plantel][shortcut.servicio]) {
-      studentsList.value = res.data[shortcut.plantel][shortcut.servicio]
-      await fetchAttendance()
+    const res = await axios.get(`https://matricula.casitaapps.com/fetch-servicios-data?plantel=${currentWorkshop.value.plantel}`)
+    if (res.data && res.data[currentWorkshop.value.plantel] && res.data[currentWorkshop.value.plantel][currentWorkshop.value.servicio]) {
+      const freshList = res.data[currentWorkshop.value.plantel][currentWorkshop.value.servicio]
+      localStorage.setItem(getCacheKey(), JSON.stringify(freshList))
+      studentsList.value = applySortOrder(freshList)
+      
+      // Update missing customSortOrder entries
+      if(customSortOrder.value.length === 0 && freshList.length > 0) {
+        customSortOrder.value = freshList.map(s => s.matricula)
+        localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
+      }
     } else {
+      studentsList.value = []
       Swal.fire('Atención', 'No hay alumnos inscritos en este taller.', 'info')
     }
   } catch (e) {
-    logger.error('Failed to open workshop', e)
-    Swal.fire('Error', 'No se pudieron cargar los datos del taller', 'error')
-    currentWorkshop.value = null
+    logger.error('Failed to sync workshop', e)
   } finally {
     loading.value = false
   }
@@ -244,12 +322,16 @@ const closeWorkshop = () => {
   studentsList.value = []
   attendanceMap.value = {}
   selectedForAttendance.value = []
+  sortMode.value = false
 }
 
 const filteredStudents = computed(() => {
   const q = searchText.value.toLowerCase()
-  if (!q) return studentsList.value
-  return studentsList.value.filter(s => s.nombreCompleto.toLowerCase().includes(q) || s.matricula.toLowerCase().includes(q))
+  let list = studentsList.value
+  if (q) {
+    list = list.filter(s => s.nombreCompleto.toLowerCase().includes(q) || s.matricula.toLowerCase().includes(q))
+  }
+  return applySortOrder(list)
 })
 
 const fetchAttendance = async () => {
@@ -258,9 +340,7 @@ const fetchAttendance = async () => {
   try {
     const res = await axios.post('https://bot.casitaapps.com/get-monthly-attendance-bulk', { students: payload })
     attendanceMap.value = res.data.attendanceData || {}
-  } catch (e) {
-    logger.error("Attendance fetch error", e)
-  }
+  } catch (e) { logger.error("Attendance fetch error", e) }
 }
 
 const hasAttendedToday = (matricula) => {
@@ -274,16 +354,12 @@ const toggleAttendanceSelection = (matricula) => {
   const idx = selectedForAttendance.value.indexOf(matricula)
   if (idx > -1) selectedForAttendance.value.splice(idx, 1)
   else selectedForAttendance.value.push(matricula)
-  
   allSelected.value = filteredStudents.value.length > 0 && selectedForAttendance.value.length === filteredStudents.value.length
 }
 
 const toggleSelectAll = () => {
-  if (allSelected.value) {
-    selectedForAttendance.value = []
-  } else {
-    selectedForAttendance.value = filteredStudents.value.map(s => s.matricula)
-  }
+  if (allSelected.value) selectedForAttendance.value = []
+  else selectedForAttendance.value = filteredStudents.value.map(s => s.matricula)
   allSelected.value = !allSelected.value
 }
 
@@ -301,6 +377,76 @@ const recordSelectedAttendance = async () => {
     loading.value = false
   }
 }
+
+// Sorting feature
+const toggleSortMode = () => {
+  sortMode.value = !sortMode.value
+  searchText.value = '' // Clear search to allow sorting entire list
+}
+
+const moveStudent = (index, direction) => {
+  const targetIndex = index + direction
+  if (targetIndex < 0 || targetIndex >= studentsList.value.length) return
+
+  // Update master order array
+  if(customSortOrder.value.length === 0) {
+    customSortOrder.value = studentsList.value.map(s => s.matricula)
+  }
+  
+  const temp = customSortOrder.value[index]
+  customSortOrder.value[index] = customSortOrder.value[targetIndex]
+  customSortOrder.value[targetIndex] = temp
+  
+  localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
+  studentsList.value = applySortOrder(studentsList.value) // Force refresh computed
+}
+
+// Incidencias Flow (Connected to Atención a Padres endpoints)
+const openIncidenciaModal = async (stu) => {
+  const { value: formValues } = await Swal.fire({
+    title: `Reportar: ${stu.nombreCompleto}`,
+    html: `
+      <div class="text-start">
+        <label class="fw-bold mb-2 text-dark small">Motivo / Descripción de la incidencia:</label>
+        <textarea id="swal-motivo" class="form-control mb-3 bg-light rounded-4 p-3 border-0" rows="3" placeholder="Describe lo sucedido (min 10 caracteres)..."></textarea>
+        <label class="fw-bold mb-2 text-dark small">Acciones Tomadas:</label>
+        <textarea id="swal-acciones" class="form-control bg-light rounded-4 p-3 border-0" rows="3" placeholder="¿Qué se hizo al respecto? (min 10 caracteres)..."></textarea>
+      </div>
+    `,
+    focusConfirm: false, showCancelButton: true, confirmButtonText: 'Guardar Reporte', cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#eab308',
+    preConfirm: () => {
+      const motivo = document.getElementById('swal-motivo').value
+      const acciones = document.getElementById('swal-acciones').value
+      if(motivo.length < 10 || acciones.length < 10) {
+        Swal.showValidationMessage('Ambos campos requieren al menos 10 caracteres.')
+        return false
+      }
+      return { motivo, acciones }
+    }
+  })
+
+  if (formValues) {
+    loading.value = true
+    try {
+      await axios.post('https://bot.casitaapps.com/api/servicios-atencion', {
+        matricula: stu.matricula, 
+        nombre_alumno: stu.nombreCompleto, 
+        servicios: currentWorkshop.value.servicio,
+        motivo: formValues.motivo, 
+        acciones: formValues.acciones, 
+        plantel: currentWorkshop.value.plantel, 
+        area: 'Artes y Deportes'
+      })
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Incidencia guardada', showConfirmButton: false, timer: 3000 })
+    } catch(e) {
+      logger.error('Failed to save incidencia', e)
+      Swal.fire('Error', 'Fallo al guardar reporte. Revisa la conexión.', 'error')
+    } finally {
+      loading.value = false
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -314,6 +460,7 @@ const recordSelectedAttendance = async () => {
 .min-h-200 { min-height: 200px; }
 
 .fade-in { animation: fadeIn 0.4s ease-out; }
+.animation-fade { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .pop-enter-active, .pop-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .pop-enter-from, .pop-leave-to { transform: scale(0); opacity: 0; }

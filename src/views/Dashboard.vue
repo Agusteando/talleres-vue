@@ -1,12 +1,12 @@
 <template>
-  <div class="container py-4">
+  <div class="container py-2">
     <div class="text-center mb-5 animation-fade-in-up">
-      <img src="/img/workshops.png" alt="Talleres App Logo" class="mb-4 drop-shadow" style="height: 110px;">
+      <img src="/img/workshops.png" alt="Talleres App Logo" class="mb-4 drop-shadow" style="height: 120px;">
       <div v-if="authStore.isLoggedIn">
         <h2 class="fw-bold text-dark mb-1">Bienvenido, {{ authStore.user.displayName }}</h2>
-        <p class="text-muted">¿Qué deseas gestionar hoy en Talleres App?</p>
+        <p class="text-muted fs-5">¿Qué deseas gestionar hoy en Talleres App?</p>
       </div>
-      <div v-else class="d-flex justify-content-center mt-3">
+      <div v-else class="d-flex justify-content-center mt-4">
         <div id="g_id_signin_main"></div>
       </div>
     </div>
@@ -21,10 +21,10 @@
             <span class="badge bg-white bg-opacity-25 border border-white text-uppercase tracking-wide rounded-pill px-3 py-2 mb-3 align-self-start" style="font-size: 0.7rem;">
               <i class="fab fa-android me-1"></i> App Exclusiva
             </span>
-            <h2 class="fw-bold display-6 mb-2">Talleres Offline</h2>
+            <h2 class="fw-bold display-5 mb-2">Talleres Offline</h2>
             <p class="fs-5 opacity-75 mb-4 max-w-75">Sincroniza, toma asistencia y trabaja en áreas sin conexión a internet.</p>
-            <button class="btn btn-light rounded-pill px-4 py-2 align-self-start fw-bold text-success shadow-sm hover-scale">
-              <i class="fas fa-download me-2"></i> Descargar APK
+            <button class="btn btn-light rounded-pill px-4 py-3 align-self-start fw-bold text-success shadow-sm hover-scale">
+              <i class="fas fa-download me-2"></i> Descargar APK Android
             </button>
           </div>
           <i class="fas fa-mobile-alt position-absolute text-white opacity-10 fa-10x" style="right: -20px; bottom: -30px; transform: rotate(-15deg);"></i>
@@ -35,11 +35,11 @@
       <div class="col-md-6 col-lg-4">
         <router-link to="/admin" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
           <div class="card-body p-4 d-flex flex-column">
-            <div class="icon-box bg-primary bg-opacity-10 text-primary mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
-              <i class="fas fa-sliders-h fa-lg"></i>
+            <div class="icon-box bg-primary bg-opacity-10 text-primary mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+              <i class="fas fa-sliders-h fa-xl"></i>
             </div>
             <h4 class="fw-bold text-dark mb-2">Administración</h4>
-            <p class="text-muted mb-0 small">Añade estudiantes, programa listas por Telegram y gestiona plantillas.</p>
+            <p class="text-muted mb-0 small">Añade estudiantes, programa listas por Telegram y gestiona plantillas y roles.</p>
           </div>
         </router-link>
       </div>
@@ -48,11 +48,11 @@
       <div class="col-md-6 col-lg-4">
         <router-link to="/teacher" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
           <div class="card-body p-4 d-flex flex-column">
-            <div class="icon-box bg-info bg-opacity-10 text-info mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
-              <i class="fas fa-chalkboard-user fa-lg"></i>
+            <div class="icon-box bg-info bg-opacity-10 text-info mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+              <i class="fas fa-chalkboard-user fa-xl"></i>
             </div>
             <h4 class="fw-bold text-dark mb-2">Portal Docente</h4>
-            <p class="text-muted mb-0 small">Visualiza listas y contactos de los estudiantes regulares por salón.</p>
+            <p class="text-muted mb-0 small">Visualiza listas y contactos de los estudiantes regulares de tu salón.</p>
           </div>
         </router-link>
       </div>
@@ -61,11 +61,11 @@
       <div class="col-md-6 col-lg-4">
         <router-link to="/workshop" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
           <div class="card-body p-4 d-flex flex-column">
-            <div class="icon-box bg-danger bg-opacity-10 text-danger mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
-              <i class="fas fa-clipboard-user fa-lg"></i>
+            <div class="icon-box bg-danger bg-opacity-10 text-danger mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+              <i class="fas fa-clipboard-user fa-xl"></i>
             </div>
             <h4 class="fw-bold text-dark mb-2">Portal Tallerista</h4>
-            <p class="text-muted mb-0 small">Acceso rápido para tomar asistencia de tus talleres asignados (Danza, Música, etc).</p>
+            <p class="text-muted mb-0 small">Toma asistencia de tus talleres, registra incidencias y organiza alumnos.</p>
           </div>
         </router-link>
       </div>
@@ -74,8 +74,8 @@
       <div class="col-md-6 col-lg-4">
         <router-link to="/overview" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
           <div class="card-body p-4 d-flex flex-column">
-            <div class="icon-box bg-success bg-opacity-10 text-success mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
-              <i class="fas fa-chart-pie fa-lg"></i>
+            <div class="icon-box bg-success bg-opacity-10 text-success mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+              <i class="fas fa-chart-pie fa-xl"></i>
             </div>
             <h4 class="fw-bold text-dark mb-2">Visión Global</h4>
             <p class="text-muted mb-0 small">Monitoreo y analíticas de asistencia en tiempo real con exportación.</p>
@@ -84,14 +84,31 @@
       </div>
 
       <!-- Atención Padres -->
-      <div class="col-md-6 col-lg-4">
-        <router-link to="/atencion-padres" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
-          <div class="card-body p-4 d-flex flex-column">
-            <div class="icon-box bg-warning bg-opacity-10 text-warning mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
-              <i class="fas fa-users fa-lg"></i>
+      <div class="col-md-6 col-lg-6">
+        <router-link to="/atencion-padres" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4 bg-white">
+          <div class="card-body p-4 d-flex align-items-center gap-4">
+            <div class="icon-box bg-warning bg-opacity-10 text-warning rounded-4 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 70px; height: 70px;">
+              <i class="fas fa-users fa-2x"></i>
             </div>
-            <h4 class="fw-bold text-dark mb-2">Atención Padres</h4>
-            <p class="text-muted mb-0 small">Seguimiento de incidencias y fichas para Artes y Deportes.</p>
+            <div>
+              <h4 class="fw-bold text-dark mb-1">Atención Padres</h4>
+              <p class="text-muted mb-0 small">Creación y seguimiento de fichas e incidencias de Artes y Deportes.</p>
+            </div>
+          </div>
+        </router-link>
+      </div>
+
+      <!-- Historial Alumno -->
+      <div class="col-md-6 col-lg-6">
+        <router-link to="/student-history" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4 bg-white">
+          <div class="card-body p-4 d-flex align-items-center gap-4">
+            <div class="icon-box bg-purple bg-opacity-10 text-purple rounded-4 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 70px; height: 70px; color: #8b5cf6; background-color: #f3e8ff;">
+              <i class="fas fa-user-graduate fa-2x"></i>
+            </div>
+            <div>
+              <h4 class="fw-bold text-dark mb-1">Historial Alumno</h4>
+              <p class="text-muted mb-0 small">Busca un estudiante y visualiza su registro completo de talleres y reportes.</p>
+            </div>
           </div>
         </router-link>
       </div>
@@ -101,17 +118,14 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 
 onMounted(() => {
-  if (window.google && !authStore.isLoggedIn) {
-    setTimeout(() => {
-      const btn = document.getElementById('g_id_signin_main')
-      if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', shape: 'pill' })
-    }, 500)
+  if (!authStore.isLoggedIn) {
+    authStore.initGoogleAuth('g_id_signin_main');
   }
 })
 </script>
@@ -126,7 +140,7 @@ onMounted(() => {
   box-shadow: 0 20px 25px -5px rgba(45, 125, 70, 0.3) !important;
 }
 .tool-card { transition: transform 0.2s ease, box-shadow 0.2s ease; border: 1px solid rgba(0,0,0,0.05) !important; }
-.tool-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.06) !important; border-color: transparent !important; }
+.tool-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08) !important; border-color: transparent !important; }
 .drop-shadow { filter: drop-shadow(0 15px 25px rgba(45, 125, 70, 0.15)); }
 .hover-scale { transition: transform 0.2s; }
 .hover-scale:hover { transform: scale(1.05); }
