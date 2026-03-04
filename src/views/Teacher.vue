@@ -72,7 +72,11 @@
               </div>
             </transition>
 
-            <img :src="stu.foto || '/img/default-avatar.png'" class="rounded-circle mb-3 object-fit-cover shadow-sm border" width="80" height="80">
+            <img v-if="stu.foto" :src="stu.foto" class="rounded-circle mb-3 object-fit-cover shadow-sm border" width="80" height="80">
+            <div v-else class="rounded-circle mb-3 mx-auto shadow-sm border bg-light d-flex align-items-center justify-content-center text-secondary" style="width: 80px; height: 80px;">
+              <i class="fas fa-user fa-2x"></i>
+            </div>
+            
             <h6 class="fw-bold mb-1 text-dark">{{ stu.nombreCompleto }}</h6>
             <div class="small text-muted mb-2 font-monospace">{{ stu.matricula }} | {{ stu.grado }} {{ stu.grupo }}</div>
             

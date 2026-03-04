@@ -1,9 +1,7 @@
 <template>
   <div class="container py-4">
     <div class="text-center mb-5 animation-fade-in-up">
-      <div class="d-inline-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm mb-4" style="width: 100px; height: 100px;">
-        <i class="fas fa-layer-group text-primary fa-4x drop-shadow"></i>
-      </div>
+      <img src="/img/workshops.png" alt="Talleres App Logo" class="mb-4 drop-shadow" style="height: 110px;">
       <div v-if="authStore.isLoggedIn">
         <h2 class="fw-bold text-dark mb-1">Bienvenido, {{ authStore.user.displayName }}</h2>
         <p class="text-muted">¿Qué deseas gestionar hoy en Talleres App?</p>
@@ -116,7 +114,7 @@ onMounted(() => {
 }
 .tool-card { transition: transform 0.2s ease, box-shadow 0.2s ease; border: 1px solid rgba(0,0,0,0.05) !important; }
 .tool-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.06) !important; border-color: transparent !important; }
-.drop-shadow { filter: drop-shadow(0 10px 15px rgba(37, 99, 235, 0.2)); }
+.drop-shadow { filter: drop-shadow(0 15px 25px rgba(45, 125, 70, 0.15)); }
 .hover-scale { transition: transform 0.2s; }
 .hover-scale:hover { transform: scale(1.05); }
 

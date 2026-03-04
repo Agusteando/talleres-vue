@@ -3,10 +3,8 @@
     
     <!-- Sidebar -->
     <nav v-if="route.path !== '/'" class="sidebar bg-white border-end shadow-sm d-none d-md-flex flex-column py-3" style="width: 260px; z-index: 1000;">
-      <router-link to="/" class="text-center d-block mb-5 text-decoration-none px-4">
-        <h3 class="fw-bold text-dark mt-3 mb-0" style="letter-spacing: -0.5px;">
-          <i class="fas fa-layer-group text-primary me-2"></i>Talleres App
-        </h3>
+      <router-link to="/" class="text-center d-block mb-4 mt-3 text-decoration-none px-4">
+        <img src="/img/workshops.png" alt="Talleres App Logo" class="img-fluid drop-shadow-sm" style="max-height: 70px;">
       </router-link>
       
       <ul class="nav flex-column gap-1 px-3">
@@ -52,7 +50,12 @@
               <span class="fw-bold text-dark mb-0 lh-1">{{ authStore.user.displayName || authStore.user.email }}</span>
               <small class="text-muted" style="font-size: 0.75rem;">{{ authStore.hasAdminAccess ? 'Administrador' : 'Usuario' }}</small>
             </div>
-            <img :src="authStore.user.picture || '/img/default-avatar.png'" class="rounded-circle shadow-sm border border-2 border-white" width="45" height="45">
+            
+            <img v-if="authStore.user.picture" :src="authStore.user.picture" class="rounded-circle shadow-sm border border-2 border-white" width="45" height="45">
+            <div v-else class="rounded-circle shadow-sm border border-2 border-white bg-light d-flex align-items-center justify-content-center text-primary" style="width: 45px; height: 45px;">
+              <i class="fas fa-user"></i>
+            </div>
+            
             <button class="btn btn-light text-danger rounded-circle p-2 ms-2" @click="authStore.logout" title="Cerrar sesión">
               <i class="fas fa-sign-out-alt"></i>
             </button>
@@ -112,6 +115,7 @@ body {
 .transition-all { transition: all 0.2s ease-in-out; }
 .nav-link:hover:not(.active) { background-color: #f1f5f9; transform: translateX(4px); }
 .w-20px { width: 20px; }
+.drop-shadow-sm { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05)); }
 
 .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.25s ease, transform 0.25s ease; }
 .fade-slide-enter-from { opacity: 0; transform: translateY(10px); }

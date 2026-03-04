@@ -61,7 +61,10 @@ export const useAuthStore = defineStore('auth', {
         }
       } catch (e) {
         logger.error('Login exception caught', e.response?.data || e.message || e);
-        const errorMsg = e.response?.data?.error || 'Hubo un problema al iniciar sesión. Inténtelo de nuevo.';
+        
+        // Extract exact error message sent by PHP backend (e.g., "Favor de autenticarse", "No es parte de nuestra institución")
+        const errorMsg = e.response?.data?.error || 'Hubo un problema de conexión al iniciar sesión. Inténtelo de nuevo.';
+        
         Swal.fire('Error de Autenticación', errorMsg, 'error');
         return false;
       }

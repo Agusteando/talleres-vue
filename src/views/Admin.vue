@@ -145,7 +145,11 @@
                       <span class="badge bg-warning text-dark shadow-sm">Eventual</span>
                     </div>
                     <div class="card-body d-flex align-items-center gap-3 p-3">
-                      <img :src="stu.foto || '/img/default-avatar.png'" class="rounded-circle object-fit-cover shadow-sm border border-2 border-white" width="55" height="55">
+                      <img v-if="stu.foto" :src="stu.foto" class="rounded-circle object-fit-cover shadow-sm border border-2 border-white" width="55" height="55">
+                      <div v-else class="rounded-circle shadow-sm border border-2 border-white bg-white d-flex align-items-center justify-content-center text-secondary" style="width: 55px; height: 55px;">
+                        <i class="fas fa-user fa-lg"></i>
+                      </div>
+                      
                       <div class="flex-grow-1 overflow-hidden">
                         <h6 class="mb-0 fw-bold text-truncate" :title="stu.nombreCompleto">{{ stu.nombreCompleto }}</h6>
                         <small class="text-muted font-monospace">{{ stu.matricula }}</small>
@@ -175,8 +179,12 @@
             <div class="col-md-6 col-lg-4" v-for="stu in addSearchResults" :key="stu.matricula">
               <div class="card h-100 border rounded-4 shadow-sm" :style="{ borderColor: currentTheme.color + '40' }">
                 <div class="card-body d-flex align-items-center gap-3 p-3">
-                  <img :src="stu.foto || '/img/default-avatar.png'" class="rounded-circle object-fit-cover border" width="50" height="50">
-                  <div class="flex-grow-1">
+                  <img v-if="stu.foto" :src="stu.foto" class="rounded-circle object-fit-cover border" width="50" height="50">
+                  <div v-else class="rounded-circle border bg-light d-flex align-items-center justify-content-center text-secondary" style="width: 50px; height: 50px;">
+                    <i class="fas fa-user"></i>
+                  </div>
+                  
+                  <div class="flex-grow-1 overflow-hidden">
                     <h6 class="mb-0 fw-bold text-truncate">{{ stu.nombreCompleto }}</h6>
                     <small class="text-muted">{{ stu.nivel }} | {{ stu.grado }} | {{ stu.matricula }}</small>
                   </div>
@@ -227,7 +235,12 @@
                       <i class="fas fa-check-circle text-success fa-3x filter-drop-shadow"></i>
                     </div>
                   </transition>
-                  <img :src="stu.foto || '/img/default-avatar.png'" class="rounded-circle mb-2 object-fit-cover shadow-sm" width="65" height="65">
+                  
+                  <img v-if="stu.foto" :src="stu.foto" class="rounded-circle mb-2 object-fit-cover shadow-sm" width="65" height="65">
+                  <div v-else class="rounded-circle mb-2 mx-auto d-flex align-items-center justify-content-center shadow-sm bg-white text-secondary" style="width: 65px; height: 65px;">
+                    <i class="fas fa-user fa-xl"></i>
+                  </div>
+                  
                   <h6 class="small fw-bold mb-0 text-truncate text-dark" :title="stu.nombreCompleto">{{ stu.nombreCompleto }}</h6>
                   <small class="text-muted" style="font-size: 0.7rem;">{{ stu.grado }} {{ stu.grupo }}</small>
                 </div>
@@ -687,7 +700,6 @@ const exportAndSendFileTelegram = async (nivel, chatIds) => {
       Nombre: s.nombreCompleto, Matricula: s.matricula, Nivel: s.nivel, Grado: s.grado, Grupo: s.grupo
     }))
     
-    // Generate Base64 Excel
     const res = await axios.post('https://bot.casitaapps.com/exportToExcel', dataFormat)
     const file = base64ToFile(res.data, `Lista_${servicio.value}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     
@@ -708,11 +720,37 @@ const exportAndSendFileTelegram = async (nivel, chatIds) => {
   }
 }
 
-// Scheduling WWeb -> Telegram Scheduling Placeholder
+// Scheduling Telegram
 const scheduleMessageModal = async () => {
   Swal.fire('Programación Telegram', 'Flujo de programación hacia TG bot en adaptación.', 'info')
 }
 
 const deleteJob = async (id) => {
   if (!(await Swal.fire({title:'¿Eliminar?', icon:'warning', showCancelButton:true})).isConfirmed) return
-  await
+  await axios.post('https://bot.casitaapps.com/deleteJob', { jobId: id })
+  fetchJobs()
+}
+
+const toggleJobStatus = async (job) => {
+  const endpoint = job.status === 'active' ? 'pauseJob' : 'resumeJob'
+  await axios.post(`https://bot.casitaapps.com/${endpoint}`, { jobId: job.id })
+  fetchJobs()
+}
+
+onMounted(() => { if (plantel.value) fetchData() })
+</script>
+
+<style scoped>
+.cursor-pointer { cursor: pointer; }
+.hover-card { transition: transform 0.2s, box-shadow 0.2s; }
+.hover-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+.attendance-card { transition: all 0.2s; overflow: hidden; }
+.attendance-card:hover { transform: scale(1.02); }
+.border-transparent { border-color: transparent; }
+.filter-drop-shadow { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+
+.fade-in { animation: fadeIn 0.4s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.pop-enter-active, .pop-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.pop-enter-from, .pop-leave-to { transform: scale(0); opacity: 0; }
+</style>

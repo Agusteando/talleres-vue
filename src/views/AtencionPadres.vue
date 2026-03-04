@@ -37,7 +37,10 @@
       <ul class="nav nav-pills mb-4 gap-2 bg-light p-2 rounded-4 d-inline-flex border">
         <li class="nav-item" v-for="(sib, idx) in siblingsForms" :key="idx">
           <a class="nav-link rounded-pill px-4 fw-semibold cursor-pointer d-flex align-items-center gap-2" :class="{'active bg-warning text-dark': activeIdx === idx, 'text-dark': activeIdx !== idx}" @click="activeIdx = idx">
-            <img :src="sib.foto || '/img/default-avatar.png'" class="rounded-circle object-fit-cover border border-white" width="30" height="30">
+            <img v-if="sib.foto" :src="sib.foto" class="rounded-circle object-fit-cover border border-white" width="30" height="30">
+            <div v-else class="rounded-circle border border-white bg-white d-flex align-items-center justify-content-center text-secondary" style="width: 30px; height: 30px;">
+              <i class="fas fa-user small"></i>
+            </div>
             {{ sib.nombreCompleto.split(' ')[0] }}
           </a>
         </li>
@@ -46,7 +49,10 @@
       <div v-if="siblingsForms[activeIdx]" class="row g-5">
         <div class="col-lg-7 border-end">
           <div class="d-flex align-items-center gap-4 mb-4 pb-3 border-bottom">
-            <img :src="siblingsForms[activeIdx].foto || '/img/default-avatar.png'" class="rounded-circle object-fit-cover shadow-sm border border-3 border-white" width="100" height="100">
+            <img v-if="siblingsForms[activeIdx].foto" :src="siblingsForms[activeIdx].foto" class="rounded-circle object-fit-cover shadow-sm border border-3 border-white" width="100" height="100">
+            <div v-else class="rounded-circle shadow-sm border border-3 border-white bg-light d-flex align-items-center justify-content-center text-secondary" style="width: 100px; height: 100px;">
+              <i class="fas fa-user fa-3x"></i>
+            </div>
             <div>
               <h4 class="fw-bold text-dark mb-1">{{ siblingsForms[activeIdx].nombreCompleto }}</h4>
               <p class="text-muted mb-0 font-monospace">{{ siblingsForms[activeIdx].matricula }} | {{ siblingsForms[activeIdx].plantel }}</p>
