@@ -65,6 +65,10 @@
             {{ stu.servicios.join(', ') }}
           </div>
           
+          <div class="position-absolute top-0 end-0 m-2 mt-5 d-flex flex-column align-items-end gap-1 z-2">
+             <span v-if="isNewStudentInAnyWorkshop(stu)" class="badge bg-success shadow-sm border border-white pulse-animation"><i class="fas fa-star text-warning me-1"></i> NUEVO</span>
+          </div>
+          
           <div class="card-body text-center p-4">
             <transition name="pop">
               <div v-if="selectedStudents.includes(stu.matricula) || hasAttendedToday(stu)" class="position-absolute top-50 start-50 translate-middle z-1">
@@ -94,10 +98,58 @@
                 <span class="fw-semibold font-monospace" @click.stop="copyText(stu.telefonoMadre)">{{ stu.telefonoMadre }} <i class="fas fa-copy text-primary ms-1 cursor-pointer"></i></span>
               </div>
             </div>
+
+            <button class="btn btn-sm btn-outline-secondary rounded-pill mt-3 position-relative z-2" @click.stop="openTimelineModal(stu)">
+              <i class="fas fa-history me-1"></i> Ver Historial Talleres
+            </button>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Timeline Modal -->
+    <div v-if="viewingTimelineStu" class="modal-backdrop fade show" style="z-index: 1040;"></div>
+    <div v-if="viewingTimelineStu" class="modal fade show d-block" tabindex="-1" style="z-index: 1050;">
+       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+          <div class="modal-content rounded-4 border-0 shadow-lg">
+             <div class="modal-header border-bottom-0 pb-0">
+               <h5 class="modal-title fw-bold text-dark">Historial de Talleres</h5>
+               <button type="button" class="btn-close" @click="closeTimelineModal"></button>
+             </div>
+             <div class="modal-body p-4">
+                <div class="d-flex align-items-center gap-3 mb-4 bg-light p-3 rounded-4 border">
+                   <img v-if="viewingTimelineStu.foto" :src="viewingTimelineStu.foto" class="rounded-circle object-fit-cover shadow-sm border border-2 border-white" width="60" height="60">
+                   <div v-else class="rounded-circle shadow-sm border border-2 border-white bg-white d-flex align-items-center justify-content-center text-secondary" style="width: 60px; height: 60px;">
+                      <i class="fas fa-user fa-lg"></i>
+                   </div>
+                   <div>
+                      <h6 class="fw-bold mb-0 text-dark">{{ viewingTimelineStu.nombreCompleto }}</h6>
+                      <small class="text-muted d-block">{{ viewingTimelineStu.matricula }} &bull; {{ viewingTimelineStu.grado }} {{ viewingTimelineStu.grupo }}</small>
+                   </div>
+                </div>
+
+                <h6 class="fw-bold mb-3 text-secondary text-uppercase small" style="letter-spacing: 0.5px;">Línea de tiempo ({{ plantel }})</h6>
+                <div class="timeline ps-3 border-start border-info border-2 ms-2" v-if="timelineData[viewingTimelineStu.matricula]?.history?.length > 0">
+                   <div class="mb-4 position-relative" v-for="entry in timelineData[viewingTimelineStu.matricula].history" :key="entry.id">
+                      <i class="fas fa-circle position-absolute border border-2 border-white" :class="entry.active ? 'text-success' : 'text-secondary'" style="left: -23px; top: 0px; font-size: 0.85rem;"></i>
+                      <div class="bg-white p-3 rounded-4 shadow-sm border">
+                         <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="fw-bold mb-0" :class="entry.active ? 'text-dark' : 'text-muted'">{{ entry.servicio_label }}</h6>
+                            <span class="badge" :class="entry.active ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-light text-muted border'">{{ entry.active ? 'Actual' : 'Baja' }}</span>
+                         </div>
+                         <small class="text-muted d-block"><i class="fas fa-calendar-alt me-1"></i> {{ formatDateObj(entry.started_at) }} - {{ entry.ended_at ? formatDateObj(entry.ended_at) : 'Presente' }}</small>
+                      </div>
+                   </div>
+                </div>
+                <div v-else class="text-center py-4 text-muted bg-light rounded-4 border border-dashed">
+                   <i class="fas fa-history fa-2x mb-2 opacity-25"></i>
+                   <p class="mb-0 small fw-semibold">No hay historial de movimientos registrado para este alumno.</p>
+                </div>
+             </div>
+          </div>
+       </div>
+    </div>
+
   </div>
 </template>
 
@@ -117,6 +169,8 @@ const servicios = ref([])
 const grades = ref([])
 const groups = ref([])
 const attendanceData = ref({})
+const timelineData = ref({})
+const viewingTimelineStu = ref(null)
 
 const selectedGrado = ref(null)
 const selectedGrupo = ref(null)
@@ -125,6 +179,32 @@ const searchText = ref('')
 const selectedStudents = ref([])
 
 const currentTheme = computed(() => getPlantelTheme(plantel.value))
+
+// Date Utilities
+const isNewStudent = (dateStr) => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return false;
+  const diffDays = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 && diffDays <= 14; 
+}
+
+const formatDateObj = (dateStr) => {
+   if(!dateStr) return '...';
+   const d = new Date(dateStr);
+   if(isNaN(d.getTime())) return dateStr;
+   return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+// Modal Handlers
+const openTimelineModal = (stu) => { viewingTimelineStu.value = stu; }
+const closeTimelineModal = () => { viewingTimelineStu.value = null; }
+
+const isNewStudentInAnyWorkshop = (stu) => {
+   const data = timelineData.value[stu.matricula];
+   if (!data || !data.history) return false;
+   return data.history.some(h => h.active && isNewStudent(h.started_at));
+}
 
 const fetchData = async () => {
   if (!plantel.value) return
@@ -172,7 +252,12 @@ const filteredStudents = computed(() => {
   )
 })
 
-watch(filteredStudents, (newVal) => { if (newVal.length > 0) fetchAttendanceForFiltered() })
+watch(filteredStudents, (newVal) => { 
+  if (newVal.length > 0) {
+    fetchAttendanceForFiltered() 
+    fetchTimelineForFiltered()
+  }
+})
 
 const fetchAttendanceForFiltered = async () => {
   if (filteredStudents.value.length === 0) return
@@ -181,6 +266,22 @@ const fetchAttendanceForFiltered = async () => {
     const res = await axios.post('https://bot.casitaapps.com/get-attendance-bulk', { students: payload })
     attendanceData.value = res.data.attendanceData || {}
   } catch (e) { logger.error('Attendance fetch failed', e) }
+}
+
+const fetchTimelineForFiltered = async () => {
+  if (filteredStudents.value.length === 0) return;
+  const matriculas = filteredStudents.value.map(s => s.matricula);
+  // Pass a generic request to get the global timeline for these students 
+  // (Assuming backend will return all if servicio is omitted or we just want their full history)
+  try {
+    const res = await axios.post('https://bot.casitaapps.com/api/servicio-timeline-bulk', {
+      plantel: plantel.value,
+      matriculas
+    });
+    timelineData.value = res.data?.data || {};
+  } catch(e) {
+    logger.error("Timeline bulk fetch gracefully failed", e);
+  }
 }
 
 const toggleSelection = (mat) => {
@@ -222,6 +323,14 @@ const copyText = (txt) => {
 .hover-card { transition: transform 0.2s, box-shadow 0.2s; }
 .hover-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
 .drop-shadow { filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2)); }
+
+.pulse-animation { animation: pulse 2s infinite; }
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
 .pop-enter-active, .pop-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .pop-enter-from, .pop-leave-to { transform: scale(0); opacity: 0; }
 </style>

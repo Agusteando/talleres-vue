@@ -63,7 +63,7 @@
             <span class="opacity-75 d-block mt-1"><i class="fas fa-map-marker-alt me-1"></i> {{ currentWorkshop.plantel }} &bull; {{ studentsList.length }} Alumnos</span>
           </div>
         </div>
-        <button class="btn btn-light text-dark rounded-pill px-4 py-2 fw-bold shadow-sm d-flex align-items-center gap-2" @click="recordSelectedAttendance" :disabled="selectedForAttendance.length === 0">
+        <button class="btn btn-light text-dark rounded-pill px-4 py-2 fw-bold shadow-sm d-flex align-items-center gap-2 hover-scale" @click="recordSelectedAttendance" :disabled="selectedForAttendance.length === 0">
           <i class="fas fa-save fa-lg text-success"></i> Guardar Asistencia <span class="badge bg-success rounded-pill ms-1">{{ selectedForAttendance.length }}</span>
         </button>
       </div>
@@ -100,8 +100,13 @@
             <div class="card h-100 attendance-card border-2 rounded-4 position-relative" 
                  :class="{'border-success bg-success bg-opacity-10 shadow-sm': hasAttendedToday(stu.matricula), 'border-primary shadow': selectedForAttendance.includes(stu.matricula), 'bg-light border-transparent': !hasAttendedToday(stu.matricula) && !selectedForAttendance.includes(stu.matricula)}">
               
+              <!-- Indicator for New Students -->
+              <div v-if="isNewStudent(timelineData[stu.matricula]?.started_at)" class="position-absolute top-0 start-0 m-2 z-2" style="pointer-events: none;">
+                <span class="badge bg-success shadow-sm rounded-pill border border-white pulse-animation"><i class="fas fa-star text-warning me-1"></i> NUEVO</span>
+              </div>
+
               <!-- Sorting Controls Overlay -->
-              <div v-if="sortMode" class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 rounded-3 d-flex flex-column justify-content-center align-items-center z-2 gap-3 p-3">
+              <div v-if="sortMode" class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 rounded-3 d-flex flex-column justify-content-center align-items-center z-3 gap-3 p-3">
                 <button class="btn btn-light rounded-circle shadow-sm" @click.stop="moveStudent(index, -1)" :disabled="index === 0"><i class="fas fa-arrow-up"></i></button>
                 <span class="badge bg-white text-dark fw-bold rounded-pill">Pos {{ index + 1 }}</span>
                 <button class="btn btn-light rounded-circle shadow-sm" @click.stop="moveStudent(index, 1)" :disabled="index === filteredStudents.length - 1"><i class="fas fa-arrow-down"></i></button>
@@ -115,7 +120,7 @@
                   </div>
                 </transition>
                 
-                <div class="mb-2 position-relative d-inline-block mx-auto">
+                <div class="mb-2 position-relative d-inline-block mx-auto mt-2">
                   <img v-if="stu.foto" :src="stu.foto" class="rounded-circle object-fit-cover shadow-sm bg-white" width="70" height="70">
                   <div v-else class="rounded-circle d-flex align-items-center justify-content-center shadow-sm bg-white text-secondary" style="width: 70px; height: 70px;">
                     <i class="fas fa-user fa-xl"></i>
@@ -125,8 +130,15 @@
                 <h6 class="small fw-bold mb-0 text-truncate text-dark w-100" :title="stu.nombreCompleto">{{ stu.nombreCompleto }}</h6>
                 <small class="text-muted d-block mb-2" style="font-size: 0.7rem;">{{ stu.grado }} {{ stu.grupo }}</small>
                 
+                <div class="d-flex align-items-center justify-content-center gap-1 mb-2 position-relative z-2">
+                  <span class="badge bg-white text-secondary border rounded-pill shadow-sm" style="font-size: 0.65rem;">
+                    <i class="fas fa-clock text-info"></i> {{ timeAgo(timelineData[stu.matricula]?.started_at) }}
+                  </span>
+                  <button class="btn btn-sm text-primary p-0 ms-1 bg-transparent border-0" @click.stop="openTimelineModal(stu)" title="Ver Historial"><i class="fas fa-history"></i></button>
+                </div>
+
                 <div class="mt-auto d-flex justify-content-center gap-2 position-relative z-2">
-                  <button class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm" @click.stop="openIncidenciaModal(stu)" title="Añadir Nota / Incidencia" :disabled="sortMode">
+                  <button class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm bg-white" @click.stop="openIncidenciaModal(stu)" title="Añadir Nota / Incidencia" :disabled="sortMode">
                     <i class="fas fa-exclamation-triangle"></i> Nota
                   </button>
                 </div>
@@ -169,6 +181,49 @@
       </div>
     </div>
 
+    <!-- Timeline Modal -->
+    <div v-if="viewingTimelineStu" class="modal-backdrop fade show" style="z-index: 1040;"></div>
+    <div v-if="viewingTimelineStu" class="modal fade show d-block" tabindex="-1" style="z-index: 1050;">
+       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+          <div class="modal-content rounded-4 border-0 shadow-lg">
+             <div class="modal-header border-bottom-0 pb-0">
+               <h5 class="modal-title fw-bold text-dark">Historial de Talleres</h5>
+               <button type="button" class="btn-close" @click="closeTimelineModal"></button>
+             </div>
+             <div class="modal-body p-4">
+                <div class="d-flex align-items-center gap-3 mb-4 bg-light p-3 rounded-4 border">
+                   <img v-if="viewingTimelineStu.foto" :src="viewingTimelineStu.foto" class="rounded-circle object-fit-cover shadow-sm border border-2 border-white" width="60" height="60">
+                   <div v-else class="rounded-circle shadow-sm border border-2 border-white bg-white d-flex align-items-center justify-content-center text-secondary" style="width: 60px; height: 60px;">
+                      <i class="fas fa-user fa-lg"></i>
+                   </div>
+                   <div>
+                      <h6 class="fw-bold mb-0 text-dark">{{ viewingTimelineStu.nombreCompleto }}</h6>
+                      <small class="text-muted d-block">{{ viewingTimelineStu.matricula }} &bull; {{ viewingTimelineStu.grado }} {{ viewingTimelineStu.grupo }}</small>
+                   </div>
+                </div>
+
+                <h6 class="fw-bold mb-3 text-secondary text-uppercase small" style="letter-spacing: 0.5px;">Línea de tiempo ({{ currentWorkshop?.plantel }})</h6>
+                <div class="timeline ps-3 border-start border-info border-2 ms-2" v-if="timelineData[viewingTimelineStu.matricula]?.history?.length > 0">
+                   <div class="mb-4 position-relative" v-for="entry in timelineData[viewingTimelineStu.matricula].history" :key="entry.id">
+                      <i class="fas fa-circle position-absolute border border-2 border-white" :class="entry.active ? 'text-success' : 'text-secondary'" style="left: -23px; top: 0px; font-size: 0.85rem;"></i>
+                      <div class="bg-white p-3 rounded-4 shadow-sm border">
+                         <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="fw-bold mb-0" :class="entry.active ? 'text-dark' : 'text-muted'">{{ entry.servicio_label }}</h6>
+                            <span class="badge" :class="entry.active ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-light text-muted border'">{{ entry.active ? 'Actual' : 'Baja' }}</span>
+                         </div>
+                         <small class="text-muted d-block"><i class="fas fa-calendar-alt me-1"></i> {{ formatDateObj(entry.started_at) }} - {{ entry.ended_at ? formatDateObj(entry.ended_at) : 'Presente' }}</small>
+                      </div>
+                   </div>
+                </div>
+                <div v-else class="text-center py-4 text-muted bg-light rounded-4 border border-dashed">
+                   <i class="fas fa-history fa-2x mb-2 opacity-25"></i>
+                   <p class="mb-0 small fw-semibold">No hay historial de movimientos registrado para este alumno.</p>
+                </div>
+             </div>
+          </div>
+       </div>
+    </div>
+
   </div>
 </template>
 
@@ -197,12 +252,50 @@ const searchText = ref('')
 const allSelected = ref(false)
 const sortMode = ref(false)
 
+const timelineData = ref({})
+const viewingTimelineStu = ref(null)
+
 const allowedPlanteles = ["PREET", "PREEM", "PT", "PM", "ST", "SM", "ISM", "DM", "CM", "CT"]
 
 onMounted(() => {
   const stored = localStorage.getItem('workshop_shortcuts')
   if (stored) savedShortcuts.value = JSON.parse(stored)
 })
+
+// Date Utilities
+const timeAgo = (dateStr) => {
+  if (!dateStr) return 'Desconocido';
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return 'Desconocido';
+  const now = new Date();
+  const diffMs = now - d;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays <= 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  if (diffDays < 30) return `Hace ${Math.floor(diffDays/7)} sem`;
+  if (diffDays < 365) return `Hace ${Math.floor(diffDays/30)} meses`;
+  return `Hace ${Math.floor(diffDays/365)} años`;
+}
+
+const isNewStudent = (dateStr) => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return false;
+  const diffDays = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 && diffDays <= 14; 
+}
+
+const formatDateObj = (dateStr) => {
+   if(!dateStr) return '...';
+   const d = new Date(dateStr);
+   if(isNaN(d.getTime())) return dateStr;
+   return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+// Modal Handlers
+const openTimelineModal = (stu) => { viewingTimelineStu.value = stu; }
+const closeTimelineModal = () => { viewingTimelineStu.value = null; }
 
 const fetchServicesForAdd = async () => {
   if (!newShortcutPlantel.value) {
@@ -266,6 +359,7 @@ const openWorkshop = async (shortcut) => {
   selectedForAttendance.value = []
   allSelected.value = false
   sortMode.value = false
+  timelineData.value = {}
   
   // Load custom sort order
   const savedSort = localStorage.getItem(getSortKey())
@@ -275,9 +369,10 @@ const openWorkshop = async (shortcut) => {
   const cachedData = localStorage.getItem(getCacheKey())
   if (cachedData) {
     studentsList.value = applySortOrder(JSON.parse(cachedData))
-    await fetchAttendance() // Render cached list instantly, fetch attendance in background
+    await fetchAttendance() 
+    fetchTimeline() 
   } else {
-    loading.value = true // Block UI only if no cache exists
+    loading.value = true 
   }
 
   // Background Sync Data
@@ -288,6 +383,7 @@ const manualRefresh = async () => {
   loading.value = true
   await fetchWorkshopData()
   await fetchAttendance()
+  await fetchTimeline()
   loading.value = false
 }
 
@@ -306,6 +402,8 @@ const fetchWorkshopData = async () => {
         customSortOrder.value = freshList.map(s => s.matricula)
         localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
       }
+      
+      fetchTimeline()
     } else {
       studentsList.value = []
       Swal.fire('Atención', 'No hay alumnos inscritos en este taller.', 'info')
@@ -314,6 +412,21 @@ const fetchWorkshopData = async () => {
     logger.error('Failed to sync workshop', e)
   } finally {
     loading.value = false
+  }
+}
+
+const fetchTimeline = async () => {
+  if (!currentWorkshop.value || studentsList.value.length === 0) return;
+  const matriculas = studentsList.value.map(s => s.matricula);
+  try {
+    const res = await axios.post('https://bot.casitaapps.com/api/servicio-timeline-bulk', {
+      plantel: currentWorkshop.value.plantel,
+      servicio: currentWorkshop.value.servicio,
+      matriculas
+    });
+    timelineData.value = res.data?.data || {};
+  } catch(e) {
+    logger.error("Timeline bulk fetch gracefully failed", e);
   }
 }
 
@@ -358,8 +471,11 @@ const toggleAttendanceSelection = (matricula) => {
 }
 
 const toggleSelectAll = () => {
-  if (allSelected.value) selectedForAttendance.value = []
-  else selectedForAttendance.value = filteredStudents.value.map(s => s.matricula)
+  if (allSelected.value) {
+    selectedForAttendance.value = []
+  } else {
+    selectedForAttendance.value = filteredStudents.value.map(s => s.matricula)
+  }
   allSelected.value = !allSelected.value
 }
 
@@ -458,6 +574,15 @@ const openIncidenciaModal = async (stu) => {
 .border-transparent { border-color: transparent; }
 .filter-drop-shadow { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
 .min-h-200 { min-height: 200px; }
+.hover-scale { transition: transform 0.2s; }
+.hover-scale:hover { transform: scale(1.05); }
+
+.pulse-animation { animation: pulse 2s infinite; }
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
 
 .fade-in { animation: fadeIn 0.4s ease-out; }
 .animation-fade { animation: fadeIn 0.3s ease-out; }
