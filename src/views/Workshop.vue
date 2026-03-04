@@ -131,7 +131,7 @@
                 <small class="text-muted d-block mb-2" style="font-size: 0.7rem;">{{ stu.grado }} {{ stu.grupo }}</small>
                 
                 <div class="d-flex align-items-center justify-content-center gap-1 mb-2 position-relative z-2">
-                  <span class="badge bg-white text-secondary border rounded-pill shadow-sm" style="font-size: 0.65rem;">
+                  <span class="badge bg-white text-secondary border rounded-pill shadow-sm" style="font-size: 0.65rem;" v-if="timeAgo(timelineData[stu.matricula]?.started_at)">
                     <i class="fas fa-clock text-info"></i> {{ timeAgo(timelineData[stu.matricula]?.started_at) }}
                   </span>
                   <button class="btn btn-sm text-primary p-0 ms-1 bg-transparent border-0" @click.stop="openTimelineModal(stu)" title="Ver Historial"><i class="fas fa-history"></i></button>
@@ -264,11 +264,12 @@ onMounted(() => {
 
 // Date Utilities
 const timeAgo = (dateStr) => {
-  if (!dateStr) return 'Desconocido';
+  if (!dateStr) return null;
   const d = new Date(dateStr);
-  if(isNaN(d.getTime())) return 'Desconocido';
+  if(isNaN(d.getTime())) return null;
   const now = new Date();
   const diffMs = now - d;
+  if (diffMs < 0) return 'Hoy';
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   if (diffDays <= 0) return 'Hoy';
   if (diffDays === 1) return 'Ayer';
@@ -419,7 +420,7 @@ const fetchTimeline = async () => {
   if (!currentWorkshop.value || studentsList.value.length === 0) return;
   const matriculas = studentsList.value.map(s => s.matricula);
   try {
-    const res = await axios.post('https://bot.casitaapps.com/api/servicio-timeline-bulk', {
+    const res = await axios.post('https://bot.casitaapps.com/api/talleres/timeline/bulk', {
       plantel: currentWorkshop.value.plantel,
       servicio: currentWorkshop.value.servicio,
       matriculas

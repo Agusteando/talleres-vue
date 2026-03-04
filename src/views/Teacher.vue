@@ -271,10 +271,8 @@ const fetchAttendanceForFiltered = async () => {
 const fetchTimelineForFiltered = async () => {
   if (filteredStudents.value.length === 0) return;
   const matriculas = filteredStudents.value.map(s => s.matricula);
-  // Pass a generic request to get the global timeline for these students 
-  // (Assuming backend will return all if servicio is omitted or we just want their full history)
   try {
-    const res = await axios.post('https://bot.casitaapps.com/api/servicio-timeline-bulk', {
+    const res = await axios.post('https://bot.casitaapps.com/api/talleres/timeline/bulk', {
       plantel: plantel.value,
       matriculas
     });
