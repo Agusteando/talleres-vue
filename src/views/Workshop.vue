@@ -1,30 +1,33 @@
 <template>
-  <div class="workshop-view position-relative py-3">
+  <div class="workshop-view position-relative py-3" :class="{'pb-5 mb-5': selectedForAttendance.length > 0}">
+    
     <!-- Loader Minimal (Non-blocking usually) -->
-    <div v-if="loading && !currentWorkshop" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75 z-3">
+    <div v-if="loading && !currentWorkshop" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75 z-top">
       <div class="spinner-border text-danger border-4" style="width: 3rem; height: 3rem;" role="status"></div>
     </div>
 
     <!-- Background Sync Indicator -->
-    <div v-if="loading && currentWorkshop" class="position-fixed bottom-0 end-0 m-4 bg-dark text-white rounded-pill px-4 py-2 shadow-lg z-3 animation-fade">
-      <i class="fas fa-sync-alt fa-spin me-2"></i> Actualizando lista...
+    <div v-if="syncing" class="position-fixed top-0 start-50 translate-middle-x mt-3 bg-dark text-white rounded-pill px-4 py-2 shadow-lg z-top animation-fade" style="opacity: 0.95;">
+      <i class="fas fa-sync-alt fa-spin me-2 text-info"></i> Sincronizando...
     </div>
 
-    <!-- 1. SHORTCUTS SELECTION -->
-    <div v-if="!currentWorkshop" class="fade-in">
+    <!-- ========================================== -->
+    <!-- 1. SELECCIÓN DE TALLERES (INICIO)          -->
+    <!-- ========================================== -->
+    <div v-if="!currentWorkshop" class="fade-in container">
       <div class="text-center mb-5">
         <div class="bg-danger bg-opacity-10 text-danger mx-auto rounded-circle d-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
           <i class="fas fa-clipboard-user fa-2x"></i>
         </div>
         <h2 class="fw-bold text-dark mb-2">Mis Talleres</h2>
-        <p class="text-muted fs-5">Selecciona un taller para tomar asistencia rápidamente.</p>
+        <p class="text-muted fs-5">Selecciona un taller para tomar asistencia y gestionar grupos.</p>
       </div>
       
       <div class="row justify-content-center g-4 mb-5">
         <div class="col-12 col-md-4 col-lg-3" v-for="(shortcut, idx) in savedShortcuts" :key="idx">
           <div class="card h-100 border-0 shadow-sm hover-card cursor-pointer rounded-4 position-relative overflow-hidden" @click="openWorkshop(shortcut)">
             <div class="card-body p-4 d-flex flex-column align-items-center text-center">
-              <button class="btn btn-sm btn-light text-danger position-absolute top-0 end-0 m-2 rounded-circle" @click.stop="removeShortcut(idx)" title="Quitar taller">
+              <button class="btn btn-sm btn-light text-danger position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" @click.stop="removeShortcut(idx)" title="Quitar taller">
                 <i class="fas fa-times"></i>
               </button>
               <div class="mb-3 mx-auto rounded-circle d-flex align-items-center justify-content-center text-white shadow-sm" 
@@ -41,8 +44,8 @@
         <div class="col-12 col-md-4 col-lg-3">
           <div class="card h-100 border-2 border-dashed shadow-none hover-card cursor-pointer rounded-4 bg-transparent d-flex align-items-center justify-content-center min-h-200" @click="showAddModal = true" style="min-height: 200px;">
             <div class="text-center text-muted">
-              <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3 transition-transform" style="width: 60px; height: 60px;">
-                <i class="fas fa-plus fa-xl"></i>
+              <div class="bg-white shadow-sm rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3 transition-transform" style="width: 60px; height: 60px;">
+                <i class="fas fa-plus fa-xl text-danger"></i>
               </div>
               <h5 class="fw-bold mb-0">Agregar Taller</h5>
             </div>
@@ -51,24 +54,54 @@
       </div>
     </div>
 
-    <!-- 2. ATTENDANCE VIEW -->
+    <!-- ========================================== -->
+    <!-- 2. VISTA DEL TALLER (ASISTENCIA Y GRUPOS)  -->
+    <!-- ========================================== -->
     <div v-else class="fade-in">
+      <!-- Header del Taller -->
       <div class="d-flex justify-content-between align-items-center mb-4 p-4 rounded-4 shadow-sm text-white flex-wrap gap-3" :style="{ background: getPlantelTheme(currentWorkshop.plantel).gradient }">
         <div class="d-flex align-items-center gap-3">
-          <button class="btn btn-light bg-opacity-25 text-white border-0 rounded-circle shadow-sm" style="width: 45px; height: 45px;" @click="closeWorkshop">
+          <button class="btn btn-light bg-opacity-25 text-white border-0 rounded-circle shadow-sm hover-scale" style="width: 45px; height: 45px;" @click="closeWorkshop">
             <i class="fas fa-arrow-left"></i>
           </button>
           <div>
-            <h3 class="fw-bold mb-0">{{ currentWorkshop.servicio }}</h3>
-            <span class="opacity-75 d-block mt-1"><i class="fas fa-map-marker-alt me-1"></i> {{ currentWorkshop.plantel }} &bull; {{ studentsList.length }} Alumnos</span>
+            <h3 class="fw-bold mb-0 lh-1">{{ currentWorkshop.servicio }}</h3>
+            <span class="opacity-75 d-block mt-2 small"><i class="fas fa-map-marker-alt me-1"></i> {{ currentWorkshop.plantel }} &bull; {{ studentsList.length }} Alumnos</span>
           </div>
         </div>
-        <button class="btn btn-light text-dark rounded-pill px-4 py-2 fw-bold shadow-sm d-flex align-items-center gap-2 hover-scale" @click="recordSelectedAttendance" :disabled="selectedForAttendance.length === 0">
-          <i class="fas fa-save fa-lg text-success"></i> Guardar Asistencia <span class="badge bg-success rounded-pill ms-1">{{ selectedForAttendance.length }}</span>
-        </button>
       </div>
 
       <div class="bg-white rounded-4 shadow-sm border p-4">
+        
+        <!-- NAVEGACIÓN DE GRUPOS (Horizontal Scroll) -->
+        <div class="d-flex gap-2 overflow-auto py-2 custom-scrollbar mb-4 border-bottom pb-3 align-items-center">
+          <button class="btn rounded-pill fw-bold border shadow-sm px-4 flex-shrink-0 transition-all" 
+                  :class="activeGrupo === null ? 'btn-dark text-white' : 'btn-white text-muted'" 
+                  @click="activeGrupo = null">
+            <i class="fas fa-users me-2"></i> Todos
+          </button>
+          
+          <button v-for="grp in grupos" :key="grp.id"
+                  class="btn rounded-pill fw-bold border shadow-sm px-4 flex-shrink-0 transition-all d-flex align-items-center gap-2"
+                  :style="{
+                    backgroundColor: activeGrupo === grp.id ? grp.color : '#fff',
+                    color: activeGrupo === grp.id ? '#fff' : grp.color,
+                    borderColor: grp.color
+                  }"
+                  @click="activeGrupo = grp.id">
+            <i class="fas fa-folder"></i> 
+            {{ grp.name }} 
+            <span class="badge rounded-pill ms-1" :style="{backgroundColor: activeGrupo === grp.id ? 'rgba(255,255,255,0.2)' : grp.color, color: '#fff'}">
+              {{ grp.students.length }}
+            </span>
+          </button>
+
+          <button class="btn btn-light text-primary rounded-pill fw-bold border border-dashed px-4 flex-shrink-0 shadow-sm hover-scale" @click="promptCreateGrupo">
+            <i class="fas fa-plus me-1"></i> Nuevo Grupo
+          </button>
+        </div>
+
+        <!-- Barra de herramientas (Búsqueda, Filtros y Edición de Grupo) -->
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
           
           <div class="position-relative" style="width: 100%; max-width: 350px;">
@@ -76,43 +109,55 @@
             <input type="text" class="form-control rounded-pill ps-5 bg-light border-0 py-2" placeholder="Buscar alumno..." v-model="searchText">
           </div>
           
-          <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-outline-secondary rounded-pill fw-semibold px-4" @click="toggleSortMode" :class="{'active bg-secondary text-white': sortMode}">
+          <div class="d-flex gap-2 flex-wrap align-items-center">
+            <!-- Botón para eliminar el grupo actual si estamos dentro de uno -->
+            <button v-if="activeGrupo" class="btn btn-outline-danger rounded-pill fw-semibold px-4 animation-fade" @click="removeGrupo(activeGrupo)">
+              <i class="fas fa-trash-alt me-1"></i> Eliminar Grupo
+            </button>
+
+            <button class="btn btn-outline-secondary rounded-pill fw-semibold px-4" @click="toggleSortMode" :class="{'active bg-secondary text-white border-secondary': sortMode}">
               <i class="fas fa-sort me-1"></i> {{ sortMode ? 'Finalizar Orden' : 'Reordenar' }}
             </button>
             <button class="btn btn-outline-primary rounded-pill fw-semibold px-4" @click="manualRefresh">
-              <i class="fas fa-sync-alt me-1"></i> Refrescar
+              <i class="fas fa-sync-alt me-1"></i> Sincronizar
             </button>
             <button class="btn btn-outline-success rounded-pill fw-semibold px-4" @click="toggleSelectAll">
-              <i class="fas" :class="allSelected ? 'fa-check-square' : 'fa-square'"></i> {{ allSelected ? 'Deseleccionar Todo' : 'Seleccionar Todo' }}
+              <i class="fas" :class="allSelected ? 'fa-check-square' : 'fa-square'"></i> {{ allSelected ? 'Deseleccionar' : 'Seleccionar Todo' }}
             </button>
           </div>
         </div>
 
-        <div v-if="filteredStudents.length === 0" class="text-center py-5 text-muted bg-light rounded-4 border border-dashed">
+        <!-- Estado Vacío -->
+        <div v-if="filteredStudents.length === 0" class="text-center py-5 text-muted bg-light rounded-4 border border-dashed my-4">
           <i class="fas fa-user-slash fa-3x mb-3 opacity-25"></i>
-          <h5>No hay alumnos que coincidan.</h5>
+          <h5 class="fw-bold">No hay alumnos en esta vista.</h5>
+          <p class="mb-0 small" v-if="activeGrupo">Selecciona alumnos en la pestaña "Todos" y agrúpalos aquí.</p>
         </div>
 
-        <!-- Student Grid -->
+        <!-- Cuadrícula de Estudiantes -->
         <div class="row g-3">
           <div class="col-6 col-md-4 col-lg-3 col-xl-2" v-for="(stu, index) in filteredStudents" :key="stu.matricula">
             <div class="card h-100 attendance-card border-2 rounded-4 position-relative" 
                  :class="{'border-success bg-success bg-opacity-10 shadow-sm': hasAttendedToday(stu.matricula), 'border-primary shadow': selectedForAttendance.includes(stu.matricula), 'bg-light border-transparent': !hasAttendedToday(stu.matricula) && !selectedForAttendance.includes(stu.matricula)}">
               
-              <!-- Indicator for New Students -->
+              <!-- Nuevo Estudiante Indicator -->
               <div v-if="isNewStudent(timelineData[stu.matricula]?.started_at)" class="position-absolute top-0 start-0 m-2 z-2" style="pointer-events: none;">
                 <span class="badge bg-success shadow-sm rounded-pill border border-white pulse-animation"><i class="fas fa-star text-warning me-1"></i> NUEVO</span>
               </div>
 
-              <!-- Sorting Controls Overlay -->
+              <!-- Indicadores de Grupo Visual (Puntos de colores) -->
+              <div v-if="!activeGrupo && getStudentGrupos(stu.matricula).length > 0" class="position-absolute top-0 end-0 m-2 z-2 d-flex flex-column gap-1" style="pointer-events: none;">
+                <span v-for="gColor in getStudentGrupos(stu.matricula)" :key="gColor" class="badge rounded-circle shadow-sm border border-white p-2" :style="{ backgroundColor: gColor }" title="En Grupo"></span>
+              </div>
+
+              <!-- Overlay para reordenar -->
               <div v-if="sortMode" class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 rounded-3 d-flex flex-column justify-content-center align-items-center z-3 gap-3 p-3">
                 <button class="btn btn-light rounded-circle shadow-sm" @click.stop="moveStudent(index, -1)" :disabled="index === 0"><i class="fas fa-arrow-up"></i></button>
-                <span class="badge bg-white text-dark fw-bold rounded-pill">Pos {{ index + 1 }}</span>
+                <span class="badge bg-white text-dark fw-bold rounded-pill shadow-sm">Pos {{ index + 1 }}</span>
                 <button class="btn btn-light rounded-circle shadow-sm" @click.stop="moveStudent(index, 1)" :disabled="index === filteredStudents.length - 1"><i class="fas fa-arrow-down"></i></button>
               </div>
 
-              <!-- Main Card Body -->
+              <!-- Cuerpo de la Tarjeta (Click para seleccionar) -->
               <div class="card-body text-center p-3 d-flex flex-column h-100 cursor-pointer" @click="!sortMode && toggleAttendanceSelection(stu.matricula)">
                 <transition name="pop">
                   <div v-if="selectedForAttendance.includes(stu.matricula) || hasAttendedToday(stu.matricula)" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-50 rounded-4 z-1" style="pointer-events: none;">
@@ -121,8 +166,8 @@
                 </transition>
                 
                 <div class="mb-2 position-relative d-inline-block mx-auto mt-2">
-                  <img v-if="stu.foto" :src="stu.foto" class="rounded-circle object-fit-cover shadow-sm bg-white" width="70" height="70">
-                  <div v-else class="rounded-circle d-flex align-items-center justify-content-center shadow-sm bg-white text-secondary" style="width: 70px; height: 70px;">
+                  <img v-if="stu.foto" :src="stu.foto" class="rounded-circle object-fit-cover shadow-sm bg-white border border-2 border-white" width="70" height="70">
+                  <div v-else class="rounded-circle d-flex align-items-center justify-content-center shadow-sm bg-white text-secondary border border-2 border-white" style="width: 70px; height: 70px;">
                     <i class="fas fa-user fa-xl"></i>
                   </div>
                 </div>
@@ -132,13 +177,13 @@
                 
                 <div class="d-flex align-items-center justify-content-center gap-2 mb-2 position-relative z-2 mt-2">
                   <span class="badge shadow-sm rounded-pill px-2 py-1" :class="isNewStudent(timelineData[stu.matricula]?.started_at) ? 'bg-success text-white border border-success pulse-animation' : 'bg-white text-dark border'" style="font-size: 0.7rem;" v-if="timeAgo(timelineData[stu.matricula]?.started_at)">
-                    <i class="fas fa-clock" :class="isNewStudent(timelineData[stu.matricula]?.started_at) ? 'text-white' : 'text-info'"></i> Antigüedad: {{ timeAgo(timelineData[stu.matricula]?.started_at) }}
+                    <i class="fas fa-clock" :class="isNewStudent(timelineData[stu.matricula]?.started_at) ? 'text-white' : 'text-info'"></i> {{ timeAgo(timelineData[stu.matricula]?.started_at) }}
                   </span>
                   <button class="btn btn-sm text-primary p-0 bg-transparent border-0 hover-scale" @click.stop="openTimelineModal(stu)" title="Ver Historial"><i class="fas fa-history fs-6"></i></button>
                 </div>
 
                 <div class="mt-auto d-flex justify-content-center gap-2 position-relative z-2">
-                  <button class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm bg-white" @click.stop="openIncidenciaModal(stu)" title="Añadir Nota / Incidencia" :disabled="sortMode">
+                  <button class="btn btn-sm btn-outline-warning rounded-pill px-3 shadow-sm bg-white fw-semibold hover-scale" @click.stop="openIncidenciaModal(stu)" title="Añadir Nota / Incidencia" :disabled="sortMode">
                     <i class="fas fa-exclamation-triangle"></i> Nota
                   </button>
                 </div>
@@ -149,11 +194,51 @@
       </div>
     </div>
 
-    <!-- Modal Add Shortcut -->
-    <div v-if="showAddModal" class="modal-backdrop fade show" style="z-index: 1040;"></div>
-    <div v-if="showAddModal" class="modal fade show d-block" tabindex="-1" style="z-index: 1050;">
+    <!-- ========================================== -->
+    <!-- FLOATING BOTTOM ACTION BAR (CONTEXTUAL)    -->
+    <!-- ========================================== -->
+    <transition name="slide-up">
+      <div v-if="selectedForAttendance.length > 0 && !sortMode" class="position-fixed bottom-0 start-0 w-100 p-3 z-top" style="pointer-events: none;">
+        <div class="mx-auto bg-white rounded-pill shadow-lg border p-2 d-flex align-items-center justify-content-between gap-2" style="max-width: 600px; pointer-events: auto;">
+          <div class="d-flex align-items-center ms-2 flex-shrink-0">
+            <span class="badge bg-primary rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width:30px; height:30px; font-size: 0.9rem;">{{ selectedForAttendance.length }}</span>
+            <span class="fw-bold text-dark d-none d-sm-inline">Seleccionados</span>
+          </div>
+          
+          <div class="d-flex gap-2 flex-grow-1 justify-content-end">
+            <!-- Botón para quitar del grupo (Solo si estamos dentro de un grupo) -->
+            <button v-if="activeGrupo" class="btn btn-light text-danger rounded-pill fw-bold border shadow-sm px-3 hover-scale" @click="removeFromGrupo">
+              <i class="fas fa-user-minus"></i> <span class="d-none d-md-inline ms-1">Quitar</span>
+            </button>
+            
+            <!-- Botón de Agrupar (Abre Modal) -->
+            <button class="btn btn-warning text-dark rounded-pill fw-bold border-0 shadow-sm px-3 hover-scale" @click="showGroupSelectModal = true">
+              <i class="fas fa-folder-plus"></i> <span class="d-none d-sm-inline ms-1">Agrupar</span>
+            </button>
+            
+            <!-- Guardar Asistencia -->
+            <button class="btn btn-success rounded-pill fw-bold shadow-sm px-3 hover-scale" @click="recordSelectedAttendance">
+              <i class="fas fa-check"></i> <span class="d-none d-sm-inline ms-1">Asistencia</span>
+            </button>
+            
+            <!-- Cancelar Selección -->
+            <button class="btn btn-light text-danger rounded-circle shadow-sm border" style="width: 40px; height: 40px;" @click="clearSelection" title="Cancelar selección">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ========================================== -->
+    <!-- MODALS                                     -->
+    <!-- ========================================== -->
+
+    <!-- Modal Agregar Taller (Acceso Directo) -->
+    <div v-if="showAddModal" class="modal-backdrop fade show z-modal-bg"></div>
+    <div v-if="showAddModal" class="modal fade show d-block z-modal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
           <div class="modal-header border-bottom-0 pb-0">
             <h5 class="modal-title fw-bold text-dark">Agregar Taller a Favoritos</h5>
             <button type="button" class="btn-close" @click="closeAddModal"></button>
@@ -167,13 +252,13 @@
               </select>
             </div>
             <div class="mb-5 position-relative">
-              <label class="form-label fw-semibold text-muted">2. Selecciona el Taller (Servicio)</label>
+              <label class="form-label fw-semibold text-muted">2. Selecciona el Taller</label>
               <select class="form-select form-select-lg rounded-pill bg-light border-0 shadow-sm" v-model="newShortcutServicio" :disabled="!newShortcutPlantel || fetchingServices">
                 <option :value="null">{{ fetchingServices ? 'Cargando listado...' : 'Taller...' }}</option>
                 <option v-for="s in availableServicesForAdd" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
-            <button class="btn btn-danger w-100 rounded-pill py-3 fw-bold shadow-sm" @click="saveNewShortcut" :disabled="!newShortcutPlantel || !newShortcutServicio">
+            <button class="btn btn-danger w-100 rounded-pill py-3 fw-bold shadow-sm hover-scale" @click="saveNewShortcut" :disabled="!newShortcutPlantel || !newShortcutServicio">
               Guardar en Mis Talleres
             </button>
           </div>
@@ -181,13 +266,40 @@
       </div>
     </div>
 
+    <!-- Modal para Seleccionar/Asignar Grupo -->
+    <div v-if="showGroupSelectModal" class="modal-backdrop fade show z-modal-bg"></div>
+    <div v-if="showGroupSelectModal" class="modal fade show d-block z-modal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+          <div class="modal-header border-bottom-0 pb-2">
+            <h5 class="modal-title fw-bold text-dark">Añadir a Grupo</h5>
+            <button type="button" class="btn-close" @click="showGroupSelectModal = false"></button>
+          </div>
+          <div class="modal-body p-3 pt-0">
+            <p class="small text-muted mb-3">Asigna a los {{ selectedForAttendance.length }} alumnos seleccionados a un grupo existente o crea uno nuevo.</p>
+            <div class="list-group list-group-flush mb-3 rounded-3 overflow-hidden border">
+              <button v-for="grp in grupos" :key="grp.id"
+                      class="list-group-item list-group-item-action py-3 d-flex align-items-center fw-bold border-bottom"
+                      @click="assignToGrupo(grp.id)">
+                <i class="fas fa-circle me-3 fa-lg" :style="{color: grp.color}"></i> 
+                {{ grp.name }}
+              </button>
+            </div>
+            <button class="btn btn-primary w-100 rounded-pill py-2 fw-bold shadow-sm" @click="promptCreateGrupo(true)">
+              <i class="fas fa-plus me-1"></i> Crear Nuevo Grupo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Timeline Modal -->
-    <div v-if="viewingTimelineStu" class="modal-backdrop fade show" style="z-index: 1040;"></div>
-    <div v-if="viewingTimelineStu" class="modal fade show d-block" tabindex="-1" style="z-index: 1050;">
+    <div v-if="viewingTimelineStu" class="modal-backdrop fade show z-modal-bg"></div>
+    <div v-if="viewingTimelineStu" class="modal fade show d-block z-modal" tabindex="-1">
        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
           <div class="modal-content rounded-4 border-0 shadow-lg">
              <div class="modal-header border-bottom-0 pb-0">
-               <h5 class="modal-title fw-bold text-dark">Historial de Talleres</h5>
+               <h5 class="modal-title fw-bold text-dark">Historial del Alumno</h5>
                <button type="button" class="btn-close" @click="closeTimelineModal"></button>
              </div>
              <div class="modal-body p-4">
@@ -233,11 +345,18 @@ import axios from 'axios'
 import Swal from 'sweetalert2'
 import { logger } from '../utils/logger'
 import { getPlantelTheme, getServiceIcon } from '../utils/theme'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
 
 const loading = ref(false)
+const syncing = ref(false)
 const savedShortcuts = ref([])
 
+// Modals state
 const showAddModal = ref(false)
+const showGroupSelectModal = ref(false)
+
 const newShortcutPlantel = ref(null)
 const newShortcutServicio = ref(null)
 const fetchingServices = ref(false)
@@ -255,12 +374,28 @@ const sortMode = ref(false)
 const timelineData = ref({})
 const viewingTimelineStu = ref(null)
 
+// Grupos (Dossiers) State
+const grupos = ref([])
+const activeGrupo = ref(null)
+
 const allowedPlanteles = ["PREET", "PREEM", "PT", "PM", "ST", "SM", "ISM", "DM", "CM", "CT"]
 
 onMounted(() => {
   const stored = localStorage.getItem('workshop_shortcuts')
   if (stored) savedShortcuts.value = JSON.parse(stored)
 })
+
+// Identity para Grupos remotos
+const getTeacherId = () => {
+  if (authStore.user?.email) return authStore.user.email;
+  let tid = localStorage.getItem('teacher_device_id');
+  if (!tid) {
+    tid = 'tid_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('teacher_device_id', tid);
+    document.cookie = `teacher_device_id=${tid};path=/;max-age=31536000`;
+  }
+  return tid;
+}
 
 // Date Utilities
 const timeAgo = (dateStr) => {
@@ -341,6 +476,7 @@ const removeShortcut = (idx) => {
 
 const getCacheKey = () => `ws_cache_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
 const getSortKey = () => `ws_sort_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
+const getGruposKey = () => `ws_grupos_${getTeacherId()}_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
 
 const applySortOrder = (list) => {
   if (customSortOrder.value.length === 0) return list;
@@ -354,6 +490,128 @@ const applySortOrder = (list) => {
   });
 }
 
+// Métodos de Grupos (Dossiers)
+const loadGrupos = async () => {
+   if (!currentWorkshop.value) return;
+   const key = getGruposKey();
+   
+   // Carga ultrarrápida local
+   const local = localStorage.getItem(key);
+   if (local) grupos.value = JSON.parse(local);
+   else grupos.value = [];
+
+   // Sync remoto (usamos el término 'dossiers' en la API para mantener compatibilidad, pero en UI es 'grupos')
+   try {
+     const res = await axios.get(`https://bot.casitaapps.com/api/talleres/dossiers`, {
+       params: { teacher_id: getTeacherId(), plantel: currentWorkshop.value.plantel, servicio: currentWorkshop.value.servicio }
+     });
+     // Compatibilidad de API (puede que el backend responda con 'dossiers')
+     if (res.data && res.data.dossiers) {
+       grupos.value = res.data.dossiers;
+       localStorage.setItem(key, JSON.stringify(grupos.value));
+     }
+   } catch(e) {
+     logger.warn('Grupos remotos no disponibles, operando en modo local.', e);
+   }
+}
+
+const saveGruposRemote = async () => {
+   const key = getGruposKey();
+   localStorage.setItem(key, JSON.stringify(grupos.value)); // Guardado local optimista
+   try {
+     await axios.post(`https://bot.casitaapps.com/api/talleres/dossiers`, {
+       teacher_id: getTeacherId(),
+       plantel: currentWorkshop.value.plantel,
+       servicio: currentWorkshop.value.servicio,
+       dossiers: grupos.value // El backend espera llave 'dossiers'
+     });
+   } catch(e) {
+     logger.warn('Fallo al sincronizar grupos remotamente.', e);
+   }
+}
+
+const promptCreateGrupo = async (fromModal = false) => {
+   if (fromModal) showGroupSelectModal.value = false;
+
+   const { value: name } = await Swal.fire({
+     title: 'Crear Nuevo Grupo',
+     input: 'text',
+     inputPlaceholder: 'Ej: Avanzados, Lunes/Miércoles, Equipo A',
+     showCancelButton: true,
+     confirmButtonText: 'Crear',
+     cancelButtonText: 'Cancelar'
+   });
+   
+   if (name) {
+     const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6'];
+     const newGrupo = {
+       id: 'grp_' + Date.now(),
+       name,
+       color: palette[grupos.value.length % palette.length],
+       students: [...selectedForAttendance.value] 
+     };
+     grupos.value.push(newGrupo);
+     saveGruposRemote();
+     selectedForAttendance.value = [];
+     allSelected.value = false;
+     Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Grupo creado exitosamente', showConfirmButton: false, timer: 2000});
+   } else if (fromModal) {
+     // Reabrir modal si el usuario canceló la creación
+     showGroupSelectModal.value = true;
+   }
+}
+
+const assignToGrupo = (grupoId) => {
+   const grp = grupos.value.find(g => g.id === grupoId);
+   if (!grp) return;
+   
+   let added = 0;
+   selectedForAttendance.value.forEach(mat => {
+     if (!grp.students.includes(mat)) {
+       grp.students.push(mat);
+       added++;
+     }
+   });
+   
+   showGroupSelectModal.value = false;
+
+   if (added > 0) {
+     saveGruposRemote();
+     selectedForAttendance.value = [];
+     allSelected.value = false;
+     Swal.fire({toast: true, position: 'top-end', icon: 'success', title: `Añadidos a "${grp.name}"`, showConfirmButton: false, timer: 2000});
+   } else {
+     selectedForAttendance.value = [];
+     Swal.fire({toast: true, position: 'top-end', icon: 'info', title: 'Ya estaban en el grupo', showConfirmButton: false, timer: 2000});
+   }
+}
+
+const removeFromGrupo = () => {
+   if (!activeGrupo.value) return;
+   const grp = grupos.value.find(g => g.id === activeGrupo.value);
+   if (grp) {
+     grp.students = grp.students.filter(mat => !selectedForAttendance.value.includes(mat));
+     saveGruposRemote();
+     selectedForAttendance.value = [];
+     allSelected.value = false;
+     Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Quitados del grupo', showConfirmButton: false, timer: 2000});
+   }
+}
+
+const removeGrupo = async (grupoId) => {
+   const conf = await Swal.fire({ title: '¿Eliminar Grupo?', text: 'Los alumnos no se borrarán del taller general, solo se eliminará esta agrupación.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, eliminar', confirmButtonColor: '#ef4444' });
+   if (!conf.isConfirmed) return;
+
+   grupos.value = grupos.value.filter(g => g.id !== grupoId);
+   if (activeGrupo.value === grupoId) activeGrupo.value = null;
+   saveGruposRemote();
+}
+
+const getStudentGrupos = (matricula) => {
+   return grupos.value.filter(g => g.students.includes(matricula)).map(g => g.color);
+}
+
+// Lifecycle Loaders
 const openWorkshop = async (shortcut) => {
   currentWorkshop.value = shortcut
   searchText.value = ''
@@ -361,15 +619,21 @@ const openWorkshop = async (shortcut) => {
   allSelected.value = false
   sortMode.value = false
   timelineData.value = {}
+  activeGrupo.value = null
+  showGroupSelectModal.value = false
   
   // Load custom sort order
   const savedSort = localStorage.getItem(getSortKey())
   customSortOrder.value = savedSort ? JSON.parse(savedSort) : []
 
+  // Load Grupos Preferences
+  loadGrupos();
+
   // Fast Render from Cache
   const cachedData = localStorage.getItem(getCacheKey())
   if (cachedData) {
     studentsList.value = applySortOrder(JSON.parse(cachedData))
+    syncing.value = true
     await fetchAttendance() 
     fetchTimeline() 
   } else {
@@ -390,7 +654,9 @@ const manualRefresh = async () => {
 
 const fetchWorkshopData = async () => {
   if(!currentWorkshop.value) return;
-  loading.value = true;
+  // Use syncing state to avoid blocking UI if we already loaded from cache
+  if (!syncing.value) loading.value = true;
+  
   try {
     const res = await axios.get(`https://matricula.casitaapps.com/fetch-servicios-data?plantel=${currentWorkshop.value.plantel}`)
     if (res.data && res.data[currentWorkshop.value.plantel] && res.data[currentWorkshop.value.plantel][currentWorkshop.value.servicio]) {
@@ -413,6 +679,7 @@ const fetchWorkshopData = async () => {
     logger.error('Failed to sync workshop', e)
   } finally {
     loading.value = false
+    syncing.value = false
   }
 }
 
@@ -437,14 +704,26 @@ const closeWorkshop = () => {
   attendanceMap.value = {}
   selectedForAttendance.value = []
   sortMode.value = false
+  activeGrupo.value = null
 }
 
 const filteredStudents = computed(() => {
   const q = searchText.value.toLowerCase()
   let list = studentsList.value
+
+  // Filtrar por Grupo Activo
+  if (activeGrupo.value) {
+    const grp = grupos.value.find(g => g.id === activeGrupo.value);
+    if (grp) {
+      list = list.filter(s => grp.students.includes(s.matricula));
+    }
+  }
+
+  // Filtrar por Búsqueda
   if (q) {
     list = list.filter(s => s.nombreCompleto.toLowerCase().includes(q) || s.matricula.toLowerCase().includes(q))
   }
+  
   return applySortOrder(list)
 })
 
@@ -464,6 +743,11 @@ const hasAttendedToday = (matricula) => {
   return arr && arr.map(Number).includes(Number(day))
 }
 
+const clearSelection = () => {
+  selectedForAttendance.value = [];
+  allSelected.value = false;
+}
+
 const toggleAttendanceSelection = (matricula) => {
   const idx = selectedForAttendance.value.indexOf(matricula)
   if (idx > -1) selectedForAttendance.value.splice(idx, 1)
@@ -475,6 +759,7 @@ const toggleSelectAll = () => {
   if (allSelected.value) {
     selectedForAttendance.value = []
   } else {
+    // Solo seleccionar los visibles/filtrados
     selectedForAttendance.value = filteredStudents.value.map(s => s.matricula)
   }
   allSelected.value = !allSelected.value
@@ -485,8 +770,7 @@ const recordSelectedAttendance = async () => {
   try {
     await axios.post('https://bot.casitaapps.com/record-attendance-bulk', { matriculas: selectedForAttendance.value, servicio: currentWorkshop.value.servicio })
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asistencia Guardada', showConfirmButton: false, timer: 2000 })
-    selectedForAttendance.value = []
-    allSelected.value = false
+    clearSelection();
     await fetchAttendance()
   } catch (e) {
     Swal.fire('Error', 'No se guardó asistencia', 'error')
@@ -498,27 +782,34 @@ const recordSelectedAttendance = async () => {
 // Sorting feature
 const toggleSortMode = () => {
   sortMode.value = !sortMode.value
-  searchText.value = '' // Clear search to allow sorting entire list
+  searchText.value = '' 
 }
 
 const moveStudent = (index, direction) => {
   const targetIndex = index + direction
-  if (targetIndex < 0 || targetIndex >= studentsList.value.length) return
+  if (targetIndex < 0 || targetIndex >= filteredStudents.value.length) return
 
-  // Update master order array
+  const stuA = filteredStudents.value[index].matricula;
+  const stuB = filteredStudents.value[targetIndex].matricula;
+  
   if(customSortOrder.value.length === 0) {
     customSortOrder.value = studentsList.value.map(s => s.matricula)
   }
   
-  const temp = customSortOrder.value[index]
-  customSortOrder.value[index] = customSortOrder.value[targetIndex]
-  customSortOrder.value[targetIndex] = temp
+  const idxA = customSortOrder.value.indexOf(stuA);
+  const idxB = customSortOrder.value.indexOf(stuB);
   
-  localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
-  studentsList.value = applySortOrder(studentsList.value) // Force refresh computed
+  if(idxA !== -1 && idxB !== -1) {
+    const temp = customSortOrder.value[idxA]
+    customSortOrder.value[idxA] = customSortOrder.value[idxB]
+    customSortOrder.value[idxB] = temp
+    
+    localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
+    studentsList.value = [...studentsList.value] // Force re-eval
+  }
 }
 
-// Incidencias Flow (Connected to Atención a Padres endpoints)
+// Incidencias Flow
 const openIncidenciaModal = async (stu) => {
   const { value: formValues } = await Swal.fire({
     title: `Reportar: ${stu.nombreCompleto}`,
@@ -588,6 +879,21 @@ const openIncidenciaModal = async (stu) => {
 .fade-in { animation: fadeIn 0.4s ease-out; }
 .animation-fade { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
 .pop-enter-active, .pop-leave-active { transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .pop-enter-from, .pop-leave-to { transform: scale(0); opacity: 0; }
+
+.slide-up-enter-active, .slide-up-leave-active { transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(20px); }
+
+/* Custom Scrollbar for pills */
+.custom-scrollbar::-webkit-scrollbar { height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.transition-all { transition: all 0.3s ease; }
+
+.z-top { z-index: 1060 !important; }
+.z-modal-bg { z-index: 1040 !important; }
+.z-modal { z-index: 1050 !important; }
 </style>
