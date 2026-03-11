@@ -77,6 +77,7 @@
           <div class="spinner-border text-warning spinner-border-sm" role="status"></div>
         </div>
         <div v-else>
+          <!-- Assigned Menu Banner -->
           <div v-if="todayMenu" class="d-flex align-items-center justify-content-between p-3 bg-white rounded-4 shadow-sm border border-warning border-opacity-50 flex-wrap gap-3">
             <div class="d-flex align-items-center gap-3">
               <img v-if="todayMenu.image_url" :src="todayMenu.image_url" class="rounded-3 object-fit-cover shadow-sm" style="width: 70px; height: 70px;">
@@ -84,29 +85,31 @@
                 <i class="fas fa-utensils fa-2x"></i>
               </div>
               <div>
-                <span class="badge bg-warning text-dark mb-1 shadow-sm">Menú de Hoy ({{ currentWorkshop.servicio }})</span>
+                <span class="badge bg-warning text-dark mb-1 shadow-sm"><i class="fas fa-star me-1"></i> Menú de Hoy ({{ currentWorkshop.servicio }})</span>
                 <h6 class="fw-bold mb-1 text-dark">{{ todayMenu.title }}</h6>
-                <small class="text-muted d-block" style="max-width: 300px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ todayMenu.description }}</small>
+                <small class="text-muted d-block" style="max-width: 400px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ todayMenu.description || 'Sin detalles' }}</small>
               </div>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-light text-warning fw-bold shadow-sm rounded-pill hover-scale border" @click="openInlineMenuEditor(todayMenu)">
-                <i class="fas fa-pen me-1"></i> Editar Menú
+              <button class="btn btn-light text-warning fw-bold shadow-sm rounded-pill hover-scale border" @click="openInlineMenuEditor(todayMenu)">
+                <i class="fas fa-exchange-alt me-1"></i> Cambiar Plato
               </button>
             </div>
           </div>
-          <div v-else class="d-flex align-items-center justify-content-between p-3 bg-light rounded-4 shadow-sm border border-dashed flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-3 text-muted">
-              <div class="rounded-circle bg-white d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px;">
-                <i class="fas fa-exclamation-circle text-warning fa-xl"></i>
+          
+          <!-- Empty Menu Banner -->
+          <div v-else class="d-flex align-items-center justify-content-between p-4 bg-warning bg-opacity-10 rounded-4 shadow-sm border border-warning border-opacity-25 flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3 text-dark">
+              <div class="rounded-circle bg-white d-flex align-items-center justify-content-center shadow-sm text-warning" style="width: 50px; height: 50px;">
+                <i class="fas fa-exclamation-triangle fa-lg"></i>
               </div>
               <div>
-                <h6 class="fw-bold mb-0 text-dark">No hay menú registrado para hoy</h6>
-                <small>Los padres no recibirán notificación del platillo.</small>
+                <h6 class="fw-bold mb-0">No hay menú asignado para hoy</h6>
+                <small class="opacity-75">Asigna un menú para que los padres reciban el correo al tomar asistencia.</small>
               </div>
             </div>
-            <button class="btn btn-warning fw-bold shadow-sm rounded-pill text-dark hover-scale" @click="openInlineMenuEditor(null)">
-              <i class="fas fa-plus me-1"></i> Añadir Menú Rápido
+            <button class="btn btn-warning fw-bold shadow-sm rounded-pill text-dark hover-scale px-4" @click="openInlineMenuEditor(null)">
+              <i class="fas fa-plus me-1"></i> Asignar de Biblioteca
             </button>
           </div>
         </div>
@@ -333,47 +336,91 @@
       </div>
     </div>
 
-    <!-- Modal Editor de Menú Inline -->
+    <!-- Modal Editor de Menú Inline (Con Picker de Biblioteca) -->
     <div v-if="showMenuEditor" class="modal-backdrop fade show z-modal-bg"></div>
     <div v-if="showMenuEditor" class="modal fade show d-block z-modal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
-          <div class="modal-header border-bottom-0 pb-0 bg-light">
-            <h5 class="modal-title fw-bold text-dark"><i class="fas fa-utensils text-warning me-2"></i> {{ menuFormData.id ? 'Editar Menú' : 'Nuevo Menú' }}</h5>
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-light">
+          <div class="modal-header border-bottom-0 pb-0 bg-white">
+            <h5 class="modal-title fw-bold text-dark"><i class="fas fa-utensils text-warning me-2"></i> Menú del Día: {{ currentWorkshop.servicio }}</h5>
             <button type="button" class="btn-close" @click="closeMenuEditor"></button>
           </div>
-          <div class="modal-body p-4 bg-light pt-3">
-            <div class="mb-3">
-              <label class="form-label small fw-bold text-muted">Título del Plato Principal</label>
-              <input type="text" class="form-control rounded-pill border-0 shadow-sm" v-model="menuFormData.title" placeholder="Ej: Pechuga empanizada con arroz">
+          <div class="modal-body p-0 bg-white">
+            
+            <div class="d-flex border-bottom text-center fw-bold">
+              <div class="flex-fill p-3 cursor-pointer transition-all" :class="menuTab === 'library' ? 'bg-warning bg-opacity-10 text-dark border-bottom border-warning border-3' : 'text-muted hover-bg-light'" @click="menuTab = 'library'">
+                Elegir de Biblioteca
+              </div>
+              <div class="flex-fill p-3 cursor-pointer transition-all" :class="menuTab === 'custom' ? 'bg-warning bg-opacity-10 text-dark border-bottom border-warning border-3' : 'text-muted hover-bg-light'" @click="menuTab = 'custom'">
+                Crear Plato Rápido
+              </div>
             </div>
-            <div class="mb-3">
-              <label class="form-label small fw-bold text-muted">Descripción (Se enviará a los padres)</label>
-              <textarea class="form-control rounded-4 border-0 shadow-sm" v-model="menuFormData.description" rows="3" placeholder="Detalle nutricional o ingredientes principales..."></textarea>
+
+            <!-- Panel Library -->
+            <div v-if="menuTab === 'library'" class="p-4 bg-light" style="max-height: 55vh; overflow-y: auto;">
+               <input type="text" class="form-control rounded-pill border-0 shadow-sm mb-4 py-2 px-4" placeholder="Buscar recetas guardadas..." v-model="searchMenuLibrary">
+               <div class="row g-3">
+                 <div class="col-md-6" v-for="tpl in filteredMenuLibrary" :key="tpl.id">
+                    <div class="card h-100 border border-2 shadow-sm rounded-4 cursor-pointer hover-card transition-all"
+                         :class="menuFormData.selectedTemplateId === tpl.id ? 'border-warning bg-warning bg-opacity-10' : 'border-transparent bg-white'"
+                         @click="selectInlineTemplate(tpl)">
+                      <div class="d-flex p-2 gap-3 h-100 align-items-center">
+                        <img v-if="tpl.image_url" :src="tpl.image_url" class="rounded-3 object-fit-cover shadow-sm" style="width: 70px; height: 70px;">
+                        <div v-else class="rounded-3 bg-light d-flex align-items-center justify-content-center text-muted" style="width: 70px; height: 70px;">
+                          <i class="fas fa-image fa-lg"></i>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden py-1">
+                          <h6 class="fw-bold mb-0 text-dark text-truncate">{{ tpl.title }}</h6>
+                          <p class="small text-muted mb-0 text-truncate">{{ tpl.description }}</p>
+                        </div>
+                        <div class="pe-2">
+                          <i class="fas fa-check-circle fa-xl transition-all" :class="menuFormData.selectedTemplateId === tpl.id ? 'text-warning' : 'text-muted opacity-25'"></i>
+                        </div>
+                      </div>
+                    </div>
+                 </div>
+                 <div v-if="filteredMenuLibrary.length === 0" class="col-12 text-center py-4 text-muted">
+                   No hay recetas en la biblioteca con ese nombre.
+                 </div>
+               </div>
             </div>
-            <div class="mb-4">
-              <label class="form-label small fw-bold text-muted d-block">Fotografía del Platillo (Opcional)</label>
-              <div class="border-2 border-dashed rounded-4 p-3 text-center bg-white cursor-pointer" @click="triggerInlineFileInput">
-                <input type="file" ref="inlineFileInput" class="d-none" accept="image/*" @change="handleInlineFileSelect" />
-                <div v-if="menuFormData.image_url" class="position-relative">
-                  <img :src="menuFormData.image_url" class="img-fluid rounded-3 object-fit-cover shadow-sm" style="max-height: 150px; width: 100%;" />
-                  <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle shadow hover-scale" @click.stop="menuFormData.image_url = ''" title="Remover imagen">
-                    <i class="fas fa-trash-alt"></i>
-                  </button>
-                </div>
-                <div v-else-if="uploadingMenuImage" class="py-3">
-                  <div class="spinner-border text-warning mb-2"></div>
-                  <p class="text-muted small mb-0 fw-bold">Subiendo imagen...</p>
-                </div>
-                <div v-else class="py-2">
-                  <i class="fas fa-camera fa-2x text-warning mb-2"></i>
-                  <p class="text-muted small mb-0">Haz clic para subir fotografía</p>
+
+            <!-- Panel Custom -->
+            <div v-if="menuTab === 'custom'" class="p-4 bg-light" style="max-height: 55vh; overflow-y: auto;">
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Título del Plato Principal</label>
+                <input type="text" class="form-control rounded-pill border-0 shadow-sm" v-model="menuFormData.title" placeholder="Ej: Pechuga empanizada con arroz">
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Descripción</label>
+                <textarea class="form-control rounded-4 border-0 shadow-sm" v-model="menuFormData.description" rows="3" placeholder="Detalle nutricional..."></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-muted d-block">Fotografía (Opcional)</label>
+                <div class="border-2 border-dashed rounded-4 p-3 text-center bg-white cursor-pointer" @click="triggerInlineFileInput">
+                  <input type="file" ref="inlineFileInput" class="d-none" accept="image/*" @change="handleInlineFileSelect" />
+                  <div v-if="menuFormData.image_url" class="position-relative">
+                    <img :src="menuFormData.image_url" class="img-fluid rounded-3 object-fit-cover shadow-sm" style="max-height: 150px; width: 100%;" />
+                    <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle shadow hover-scale" @click.stop="menuFormData.image_url = ''" title="Remover imagen">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                  <div v-else-if="uploadingMenuImage" class="py-3">
+                    <div class="spinner-border text-warning mb-2"></div><p class="text-muted small mb-0 fw-bold">Subiendo imagen...</p>
+                  </div>
+                  <div v-else class="py-2">
+                    <i class="fas fa-camera fa-2x text-warning mb-2"></i><p class="text-muted small mb-0">Haz clic para subir fotografía</p>
+                  </div>
                 </div>
               </div>
             </div>
-            <button class="btn btn-warning w-100 rounded-pill py-3 fw-bold shadow-sm text-dark hover-scale" @click="saveInlineMenu" :disabled="!menuFormData.title || uploadingMenuImage">
-              {{ menuFormData.id ? 'Guardar Cambios' : 'Crear Menú' }}
-            </button>
+            
+          </div>
+          <div class="modal-footer border-top-0 bg-white">
+             <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border" @click="closeMenuEditor">Cancelar</button>
+             <button class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm text-dark hover-scale" @click="saveInlineMenu" :disabled="!isMenuInlineReady || uploadingMenuImage">
+               Guardar y Asignar
+             </button>
           </div>
         </div>
       </div>
@@ -495,6 +542,9 @@ const fetchTodayMenu = async () => {
 
 // Inline Menu Editor State & Methods
 const showMenuEditor = ref(false);
+const menuTab = ref('library'); // 'library' | 'custom'
+const menuLibrary = ref([]);
+const searchMenuLibrary = ref('');
 const uploadingMenuImage = ref(false);
 const inlineFileInput = ref(null);
 const menuFormData = ref({
@@ -504,12 +554,27 @@ const menuFormData = ref({
   title: '',
   description: '',
   image_url: '',
-  is_active: true
+  is_active: true,
+  selectedTemplateId: null
 });
 
-const openInlineMenuEditor = (menu) => {
+const filteredMenuLibrary = computed(() => {
+  if (!searchMenuLibrary.value) return menuLibrary.value;
+  const q = searchMenuLibrary.value.toLowerCase();
+  return menuLibrary.value.filter(t => t.title.toLowerCase().includes(q));
+});
+
+const isMenuInlineReady = computed(() => {
+  if (menuTab.value === 'library') return !!menuFormData.value.selectedTemplateId;
+  return !!menuFormData.value.title;
+});
+
+const openInlineMenuEditor = async (menu) => {
+  searchMenuLibrary.value = '';
+  menuTab.value = 'library';
   if (menu) {
-    menuFormData.value = { ...menu, meal_date: menu.meal_date.split('T')[0], is_active: !!menu.is_active };
+    menuTab.value = 'custom';
+    menuFormData.value = { ...menu, meal_date: menu.meal_date.split('T')[0], is_active: !!menu.is_active, selectedTemplateId: null };
   } else {
     menuFormData.value = {
       id: null,
@@ -518,10 +583,26 @@ const openInlineMenuEditor = (menu) => {
       title: '',
       description: '',
       image_url: '',
-      is_active: true
+      is_active: true,
+      selectedTemplateId: null
     };
   }
+  
+  if (menuLibrary.value.length === 0) {
+    try {
+      const res = await axios.get('https://matricula.casitaapps.com/api/menu-library');
+      menuLibrary.value = res.data;
+    } catch(e) {}
+  }
+
   showMenuEditor.value = true;
+};
+
+const selectInlineTemplate = (tpl) => {
+  menuFormData.value.selectedTemplateId = tpl.id;
+  menuFormData.value.title = tpl.title;
+  menuFormData.value.description = tpl.description;
+  menuFormData.value.image_url = tpl.image_url;
 };
 
 const closeMenuEditor = () => { showMenuEditor.value = false; };
@@ -534,8 +615,7 @@ const handleInlineFileSelect = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   if (!file.type.startsWith('image/')) return Swal.fire('Inválido', 'Solo imágenes.', 'warning');
-  if (file.size > 5 * 1024 * 1024) return Swal.fire('Error', 'Max 5MB.', 'warning');
-
+  
   uploadingMenuImage.value = true;
   try {
     const form = new FormData();
@@ -545,7 +625,6 @@ const handleInlineFileSelect = async (e) => {
     });
     menuFormData.value.image_url = res.data.url;
   } catch (error) {
-    logger.error('Inline image upload failed', error);
     Swal.fire('Error', 'No se pudo subir la imagen.', 'error');
   } finally {
     uploadingMenuImage.value = false;
@@ -556,13 +635,29 @@ const handleInlineFileSelect = async (e) => {
 const saveInlineMenu = async () => {
   loading.value = true;
   try {
-    const payload = { ...menuFormData.value, is_active: menuFormData.value.is_active ? 1 : 0 };
+    const payload = { 
+      id: menuFormData.value.id,
+      meal_date: menuFormData.value.meal_date,
+      meal_type: menuFormData.value.meal_type,
+      title: menuFormData.value.title,
+      description: menuFormData.value.description,
+      image_url: menuFormData.value.image_url,
+      is_active: menuFormData.value.is_active ? 1 : 0 
+    };
+
+    if (menuTab.value === 'library' && menuFormData.value.selectedTemplateId) {
+      const tpl = menuLibrary.value.find(t => t.id === menuFormData.value.selectedTemplateId);
+      payload.title = tpl.title;
+      payload.description = tpl.description;
+      payload.image_url = tpl.image_url;
+    }
+
     if (payload.id) {
       await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${payload.id}`, payload);
     } else {
       await axios.post('https://matricula.casitaapps.com/api/meal-menus', payload);
     }
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Guardado', showConfirmButton: false, timer: 2000 });
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Asignado', showConfirmButton: false, timer: 2000 });
     closeMenuEditor();
     fetchTodayMenu();
   } catch (e) {
@@ -579,7 +674,6 @@ onMounted(() => {
   if (stored) savedShortcuts.value = JSON.parse(stored)
 })
 
-// Identity para Grupos remotos
 const getTeacherId = () => {
   if (authStore.user?.email) return authStore.user.email;
   let tid = localStorage.getItem('teacher_device_id');
@@ -591,7 +685,6 @@ const getTeacherId = () => {
   return tid;
 }
 
-// Date Utilities
 const timeAgo = (dateStr) => {
   if (!dateStr) return null;
   const d = new Date(dateStr);
@@ -623,7 +716,6 @@ const formatDateObj = (dateStr) => {
    return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// Modal Handlers
 const openTimelineModal = (stu) => { viewingTimelineStu.value = stu; }
 const closeTimelineModal = () => { viewingTimelineStu.value = null; }
 
@@ -641,7 +733,7 @@ const fetchServicesForAdd = async () => {
       availableServicesForAdd.value = []
     }
   } catch (e) {
-    logger.error('Failed to fetch services for modal', e)
+    logger.error('Failed to fetch services', e)
   } finally {
     fetchingServices.value = false
   }
@@ -684,7 +776,6 @@ const applySortOrder = (list) => {
   });
 }
 
-// Métodos de Grupos (Dossiers)
 const loadGrupos = async () => {
    if (!currentWorkshop.value) return;
    const key = getGruposKey();
@@ -702,7 +793,7 @@ const loadGrupos = async () => {
        localStorage.setItem(key, JSON.stringify(grupos.value));
      }
    } catch(e) {
-     logger.warn('Grupos remotos no disponibles, operando en modo local.', e);
+     logger.warn('Grupos remotos no disponibles', e);
    }
 }
 
@@ -717,7 +808,7 @@ const saveGruposRemote = async () => {
        dossiers: grupos.value
      });
    } catch(e) {
-     logger.warn('Fallo al sincronizar grupos remotamente.', e);
+     logger.warn('Fallo sync de grupos', e);
    }
 }
 
@@ -801,7 +892,6 @@ const getStudentGrupos = (matricula) => {
    return grupos.value.filter(g => g.students.includes(matricula)).map(g => g.color);
 }
 
-// Lifecycle Loaders
 const openWorkshop = async (shortcut) => {
   currentWorkshop.value = shortcut
   searchText.value = ''
@@ -811,6 +901,7 @@ const openWorkshop = async (shortcut) => {
   timelineData.value = {}
   activeGrupo.value = null
   showGroupSelectModal.value = false
+  todayMenu.value = null
   
   const savedSort = localStorage.getItem(getSortKey())
   customSortOrder.value = savedSort ? JSON.parse(savedSort) : []
@@ -879,9 +970,7 @@ const fetchTimeline = async () => {
       matriculas
     });
     timelineData.value = res.data?.data || {};
-  } catch(e) {
-    logger.error("Timeline bulk fetch gracefully failed", e);
-  }
+  } catch(e) {}
 }
 
 const closeWorkshop = () => {
@@ -949,7 +1038,6 @@ const recordSelectedAttendance = async () => {
   try {
     await axios.post('https://bot.casitaapps.com/record-attendance-bulk', { matriculas: selectedForAttendance.value, servicio: currentWorkshop.value.servicio })
     
-    // Meal Workflow Trigger
     if (isMealService.value) {
       await triggerParentNotifications(selectedForAttendance.value);
     } else {
@@ -979,12 +1067,16 @@ const triggerParentNotifications = async (matriculasIds) => {
             date: new Date().toISOString().split('T')[0]
         });
         
-        Swal.fire('Asistencia y Notificación', `Se guardó asistencia y se enviaron ${res.data.sentCount} correos a los padres.`, 'success');
+        if(res.data.sentCount > 0) {
+            Swal.fire('Asistencia y Notificación', `Se guardó asistencia y se enviaron ${res.data.sentCount} correos.`, 'success');
+        } else {
+            Swal.fire('Asistencia Guardada', 'Asistencia registrada. (No hubo correos que enviar).', 'success');
+        }
     } catch (e) {
         logger.error('Failed to notify parents', e);
         Swal.fire({
-            title: 'Correos Fallidos',
-            text: 'La asistencia se guardó correctamente, pero el envío de correos falló. ¿Deseas reintentar?',
+            title: 'Notificaciones Fallidas',
+            text: 'La asistencia se guardó correctamente, pero el envío de correos falló. Puedes reintentar enviar los correos.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Reintentar',
@@ -1065,7 +1157,6 @@ const openIncidenciaModal = async (stu) => {
       })
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Incidencia guardada', showConfirmButton: false, timer: 3000 })
     } catch(e) {
-      logger.error('Failed to save incidencia', e)
       Swal.fire('Error', 'Fallo al guardar reporte. Revisa la conexión.', 'error')
     } finally {
       loading.value = false
@@ -1085,6 +1176,7 @@ const openIncidenciaModal = async (stu) => {
 .min-h-200 { min-height: 200px; }
 .hover-scale { transition: transform 0.2s; }
 .hover-scale:hover { transform: scale(1.05); }
+.hover-bg-light:hover { background-color: #f8fafc; }
 
 .pulse-animation { animation: pulse 2s infinite; }
 @keyframes pulse {

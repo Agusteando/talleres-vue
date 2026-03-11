@@ -24,6 +24,18 @@
             </router-link>
           </li>
           <li class="nav-item">
+            <router-link to="/menus" class="nav-link premium-link rounded-4 text-dark fw-semibold d-flex align-items-center" :class="{'active-link': route.path.startsWith('/menus')}">
+              <div class="icon-wrapper rounded-circle d-flex justify-content-center align-items-center me-3"><i class="fas fa-utensils"></i></div>
+              <span class="text-truncate">Menús del Día</span>
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/plantel-settings" class="nav-link premium-link rounded-4 text-dark fw-semibold d-flex align-items-center" :class="{'active-link': route.path.startsWith('/plantel-settings')}">
+              <div class="icon-wrapper rounded-circle d-flex justify-content-center align-items-center me-3"><i class="fas fa-cogs"></i></div>
+              <span class="text-truncate">Configuración</span>
+            </router-link>
+          </li>
+          <li class="nav-item">
             <router-link to="/teacher" class="nav-link premium-link rounded-4 text-dark fw-semibold d-flex align-items-center" :class="{'active-link': route.path.startsWith('/teacher')}">
               <div class="icon-wrapper rounded-circle d-flex justify-content-center align-items-center me-3"><i class="fas fa-chalkboard-user"></i></div>
               <span class="text-truncate">Portal Docente</span>
@@ -97,6 +109,18 @@
             </router-link>
           </li>
           <li class="nav-item" data-bs-dismiss="offcanvas">
+            <router-link to="/menus" class="nav-link premium-link rounded-4 text-dark fw-semibold d-flex align-items-center" :class="{'active-link': route.path.startsWith('/menus')}">
+              <div class="icon-wrapper rounded-circle d-flex justify-content-center align-items-center me-3"><i class="fas fa-utensils"></i></div>
+              <span class="text-truncate">Menús del Día</span>
+            </router-link>
+          </li>
+          <li class="nav-item" data-bs-dismiss="offcanvas">
+            <router-link to="/plantel-settings" class="nav-link premium-link rounded-4 text-dark fw-semibold d-flex align-items-center" :class="{'active-link': route.path.startsWith('/plantel-settings')}">
+              <div class="icon-wrapper rounded-circle d-flex justify-content-center align-items-center me-3"><i class="fas fa-cogs"></i></div>
+              <span class="text-truncate">Configuración</span>
+            </router-link>
+          </li>
+          <li class="nav-item" data-bs-dismiss="offcanvas">
             <router-link to="/teacher" class="nav-link premium-link rounded-4 text-dark fw-semibold d-flex align-items-center" :class="{'active-link': route.path.startsWith('/teacher')}">
               <div class="icon-wrapper rounded-circle d-flex justify-content-center align-items-center me-3"><i class="fas fa-chalkboard-user"></i></div>
               <span class="text-truncate">Portal Docente</span>
@@ -145,6 +169,8 @@
         <div class="d-none d-md-block ms-2 text-muted fw-semibold">
           <span v-if="route.meta.active === 'dashboard'">Inicio / Dashboard</span>
           <span v-else-if="route.meta.active === 'admin'">Herramientas / Administración</span>
+          <span v-else-if="route.meta.active === 'menus'">Herramientas / Menús del Día</span>
+          <span v-else-if="route.meta.active === 'plantel-settings'">Herramientas / Config. Planteles</span>
           <span v-else-if="route.meta.active === 'teacher'">Docentes / Portal Docente</span>
           <span v-else-if="route.meta.active === 'workshop'">Docentes / Portal Tallerista</span>
           <span v-else-if="route.meta.active === 'overview'">Analíticas / Visión Global</span>
@@ -156,7 +182,6 @@
           <div v-if="!authStore.isLoggedIn">
             <div id="g_id_signin_top" class="min-h-40"></div>
           </div>
-          <!-- Topbar profile rendering is handled natively in the desktop sidebar now, but kept here for mobile view -->
           <div v-if="authStore.isLoggedIn && route.path === '/'" class="d-lg-none d-flex align-items-center gap-2 bg-light p-1 pe-3 rounded-pill border">
             <img v-if="authStore.user.picture" :src="authStore.user.picture" class="rounded-circle shadow-sm border border-white object-fit-cover" width="35" height="35">
             <div v-else class="rounded-circle shadow-sm border border-white bg-white d-flex align-items-center justify-content-center text-primary" style="width: 35px; height: 35px;">
@@ -194,7 +219,6 @@ onMounted(() => {
   }
 })
 
-// Ensure Google Button re-renders if the top container becomes available again after navigation/logout
 watch([() => route.path, () => authStore.isLoggedIn], ([newPath, isLoggedIn]) => {
   if (!isLoggedIn) {
     nextTick(() => {

@@ -44,6 +44,19 @@
         </router-link>
       </div>
 
+      <!-- Menús del Día -->
+      <div class="col-md-6 col-lg-4">
+        <router-link to="/menus" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="icon-box bg-warning bg-opacity-10 text-warning mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+              <i class="fas fa-utensils fa-xl"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Menús del Día</h4>
+            <p class="text-muted mb-0 small">Programa el comedor y configura los correos que reciben los padres.</p>
+          </div>
+        </router-link>
+      </div>
+
       <!-- Portal Docente -->
       <div class="col-md-6 col-lg-4">
         <router-link to="/teacher" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
@@ -66,6 +79,19 @@
             </div>
             <h4 class="fw-bold text-dark mb-2">Portal Tallerista</h4>
             <p class="text-muted mb-0 small">Toma asistencia de tus talleres, registra incidencias y organiza alumnos.</p>
+          </div>
+        </router-link>
+      </div>
+
+      <!-- Configuración Planteles -->
+      <div class="col-md-6 col-lg-4">
+        <router-link to="/plantel-settings" class="card h-100 border-0 shadow-sm tool-card text-decoration-none rounded-4">
+          <div class="card-body p-4 d-flex flex-column">
+            <div class="icon-box bg-secondary bg-opacity-10 text-secondary mb-4 rounded-4 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+              <i class="fas fa-cogs fa-xl"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Configuración</h4>
+            <p class="text-muted mb-0 small">Controla remitentes de correos y ajustes generales de cada sede.</p>
           </div>
         </router-link>
       </div>

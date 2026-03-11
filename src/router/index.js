@@ -9,6 +9,8 @@ import Workshop from '../views/Workshop.vue'
 import AtencionPadres from '../views/AtencionPadres.vue'
 import StudentHistory from '../views/StudentHistory.vue'
 import Overview from '../views/Overview.vue'
+import Menus from '../views/Menus.vue'
+import PlantelSettings from '../views/PlantelSettings.vue'
 import Forbidden from '../views/Forbidden.vue'
 
 const routes = [
@@ -19,6 +21,8 @@ const routes = [
   { path: '/atencion-padres/:matricula?', component: AtencionPadres, meta: { active: 'atencion-padres' } },
   { path: '/student-history', component: StudentHistory, meta: { active: 'student-history' } },
   { path: '/overview', component: Overview, meta: { active: 'overview', requiresAuth: true, adminOnly: true } },
+  { path: '/menus', component: Menus, meta: { active: 'menus', requiresAuth: true, adminOnly: true } },
+  { path: '/plantel-settings', component: PlantelSettings, meta: { active: 'plantel-settings', requiresAuth: true, adminOnly: true } },
   { path: '/forbidden', component: Forbidden }
 ]
 
