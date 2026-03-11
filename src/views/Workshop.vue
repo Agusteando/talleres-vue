@@ -105,7 +105,7 @@
               </div>
               <div>
                 <h6 class="fw-bold mb-0">No hay menú asignado para hoy</h6>
-                <small class="opacity-75">Asigna un menú para que los padres reciban el correo al tomar asistencia.</small>
+                <small class="opacity-75">Asigna un menú para que los padres reciban el correo al tomar asistencia en <strong>{{ currentWorkshop.plantel }}</strong>.</small>
               </div>
             </div>
             <button class="btn btn-warning fw-bold shadow-sm rounded-pill text-dark hover-scale px-4" @click="openInlineMenuEditor(null)">
@@ -336,13 +336,13 @@
       </div>
     </div>
 
-    <!-- Modal Editor de Menú Inline (Con Picker de Biblioteca) -->
+    <!-- Modal Editor de Menú Inline (Con Picker de Biblioteca Plantel-Aware) -->
     <div v-if="showMenuEditor" class="modal-backdrop fade show z-modal-bg"></div>
     <div v-if="showMenuEditor" class="modal fade show d-block z-modal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-light">
           <div class="modal-header border-bottom-0 pb-0 bg-white">
-            <h5 class="modal-title fw-bold text-dark"><i class="fas fa-utensils text-warning me-2"></i> Menú del Día: {{ currentWorkshop.servicio }}</h5>
+            <h5 class="modal-title fw-bold text-dark"><i class="fas fa-utensils text-warning me-2"></i> Menú del Día: {{ currentWorkshop.servicio }} ({{ currentWorkshop.plantel }})</h5>
             <button type="button" class="btn-close" @click="closeMenuEditor"></button>
           </div>
           <div class="modal-body p-0 bg-white">
@@ -358,7 +358,7 @@
 
             <!-- Panel Library -->
             <div v-if="menuTab === 'library'" class="p-4 bg-light" style="max-height: 55vh; overflow-y: auto;">
-               <input type="text" class="form-control rounded-pill border-0 shadow-sm mb-4 py-2 px-4" placeholder="Buscar recetas guardadas..." v-model="searchMenuLibrary">
+               <input type="text" class="form-control rounded-pill border-0 shadow-sm mb-4 py-2 px-4" placeholder="Buscar recetas guardadas de este plantel..." v-model="searchMenuLibrary">
                <div class="row g-3">
                  <div class="col-md-6" v-for="tpl in filteredMenuLibrary" :key="tpl.id">
                     <div class="card h-100 border border-2 shadow-sm rounded-4 cursor-pointer hover-card transition-all"
@@ -380,7 +380,7 @@
                     </div>
                  </div>
                  <div v-if="filteredMenuLibrary.length === 0" class="col-12 text-center py-4 text-muted">
-                   No hay recetas en la biblioteca con ese nombre.
+                   No hay recetas guardadas para {{ currentWorkshop.plantel }}. Crea una en la otra pestaña o usa la administración de menús.
                  </div>
                </div>
             </div>
@@ -523,11 +523,11 @@ const todayMenu = ref(null);
 const loadingMenu = ref(false);
 
 const fetchTodayMenu = async () => {
-  if (!isMealService.value) return;
+  if (!isMealService.value || !currentWorkshop.value) return;
   loadingMenu.value = true;
   try {
     const todayStr = new Date().toISOString().split('T')[0];
-    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&type=${currentWorkshop.value.servicio.toUpperCase()}`);
+    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&type=${currentWorkshop.value.servicio.toUpperCase()}&plantel=${currentWorkshop.value.plantel}`);
     if (res.data && res.data.length > 0) {
       todayMenu.value = res.data[0];
     } else {
@@ -590,7 +590,7 @@ const openInlineMenuEditor = async (menu) => {
   
   if (menuLibrary.value.length === 0) {
     try {
-      const res = await axios.get('https://matricula.casitaapps.com/api/menu-library');
+      const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?plantel=${currentWorkshop.value.plantel}`);
       menuLibrary.value = res.data;
     } catch(e) {}
   }
@@ -637,6 +637,7 @@ const saveInlineMenu = async () => {
   try {
     const payload = { 
       id: menuFormData.value.id,
+      plantel: currentWorkshop.value.plantel,
       meal_date: menuFormData.value.meal_date,
       meal_type: menuFormData.value.meal_type,
       title: menuFormData.value.title,
@@ -1070,7 +1071,7 @@ const triggerParentNotifications = async (matriculasIds) => {
         if(res.data.sentCount > 0) {
             Swal.fire('Asistencia y Notificación', `Se guardó asistencia y se enviaron ${res.data.sentCount} correos.`, 'success');
         } else {
-            Swal.fire('Asistencia Guardada', 'Asistencia registrada. (No hubo correos que enviar).', 'success');
+            Swal.fire('Asistencia Guardada', `Asistencia registrada. (${res.data.message})`, 'success');
         }
     } catch (e) {
         logger.error('Failed to notify parents', e);

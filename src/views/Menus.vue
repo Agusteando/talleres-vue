@@ -8,132 +8,148 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 p-4 rounded-4 shadow-sm text-dark bg-white border border-warning border-opacity-50">
       <div>
         <h2 class="fw-bold mb-1"><i class="fas fa-utensils text-warning me-2"></i> Menús del Día</h2>
-        <p class="mb-0 text-muted">Gestiona el calendario del comedor y tu biblioteca de platillos reutilizables.</p>
+        <p class="mb-0 text-muted">Gestiona el calendario del comedor y la biblioteca de platillos reutilizables por plantel.</p>
+      </div>
+      <div class="mt-3 mt-md-0" style="min-width: 250px;">
+        <select class="form-select form-select-lg rounded-pill shadow-sm border-0 bg-light fw-bold text-dark" v-model="selectedPlantel" @change="onPlantelChange">
+          <option :value="null">Selecciona un Plantel...</option>
+          <option v-for="p in allowedPlanteles" :key="p" :value="p">{{ p }}</option>
+        </select>
       </div>
     </div>
 
-    <!-- Top Tabs -->
-    <ul class="nav nav-pills mb-4 bg-white p-2 rounded-pill shadow-sm border d-inline-flex flex-wrap">
-      <li class="nav-item">
-        <a class="nav-link rounded-pill fw-semibold px-4 cursor-pointer text-dark transition-all" 
-           :class="{ 'bg-light border': activeTab !== 'schedule', 'active bg-warning text-dark shadow-sm border-warning': activeTab === 'schedule' }" 
-           @click="activeTab = 'schedule'">
-          <i class="fas fa-calendar-alt me-1"></i> Programación Diaria
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link rounded-pill fw-semibold px-4 cursor-pointer text-dark transition-all" 
-           :class="{ 'bg-light border': activeTab !== 'library', 'active bg-warning text-dark shadow-sm border-warning': activeTab === 'library' }" 
-           @click="activeTab = 'library'">
-          <i class="fas fa-book-open me-1"></i> Biblioteca de Menús
-        </a>
-      </li>
-    </ul>
+    <div v-if="!selectedPlantel" class="text-center py-5 fade-in">
+       <div class="bg-warning bg-opacity-10 text-warning mx-auto rounded-circle d-flex align-items-center justify-content-center mb-4" style="width: 90px; height: 90px;">
+         <i class="fas fa-building fa-2x"></i>
+       </div>
+       <h4 class="fw-bold text-dark mb-2">Selecciona tu Plantel</h4>
+       <p class="text-muted">Los menús y las recetas se administran de forma independiente para cada sede.</p>
+    </div>
 
-    <!-- ============================================== -->
-    <!-- TAB 1: PROGRAMACIÓN DIARIA (SCHEDULE)          -->
-    <!-- ============================================== -->
-    <div v-if="activeTab === 'schedule'" class="fade-in">
-      <div class="card border-0 rounded-4 shadow-sm mb-4 bg-white p-4 d-flex flex-row align-items-center gap-4">
-        <div class="flex-grow-1" style="max-width: 250px;">
-          <label class="form-label small fw-bold text-muted text-uppercase">Fecha a programar</label>
-          <input type="date" class="form-control form-control-lg rounded-pill bg-light border-0 shadow-sm fw-bold" v-model="selectedDate" @change="loadDailySchedule">
+    <div v-else class="fade-in">
+      <!-- Top Tabs -->
+      <ul class="nav nav-pills mb-4 bg-white p-2 rounded-pill shadow-sm border d-inline-flex flex-wrap">
+        <li class="nav-item">
+          <a class="nav-link rounded-pill fw-semibold px-4 cursor-pointer text-dark transition-all" 
+             :class="{ 'bg-light border': activeTab !== 'schedule', 'active bg-warning text-dark shadow-sm border-warning': activeTab === 'schedule' }" 
+             @click="activeTab = 'schedule'">
+            <i class="fas fa-calendar-alt me-1"></i> Programación Diaria
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link rounded-pill fw-semibold px-4 cursor-pointer text-dark transition-all" 
+             :class="{ 'bg-light border': activeTab !== 'library', 'active bg-warning text-dark shadow-sm border-warning': activeTab === 'library' }" 
+             @click="activeTab = 'library'">
+            <i class="fas fa-book-open me-1"></i> Biblioteca de Menús
+          </a>
+        </li>
+      </ul>
+
+      <!-- ============================================== -->
+      <!-- TAB 1: PROGRAMACIÓN DIARIA (SCHEDULE)          -->
+      <!-- ============================================== -->
+      <div v-if="activeTab === 'schedule'" class="fade-in">
+        <div class="card border-0 rounded-4 shadow-sm mb-4 bg-white p-4 d-flex flex-row align-items-center gap-4">
+          <div class="flex-grow-1" style="max-width: 250px;">
+            <label class="form-label small fw-bold text-muted text-uppercase">Fecha a programar</label>
+            <input type="date" class="form-control form-control-lg rounded-pill bg-light border-0 shadow-sm fw-bold" v-model="selectedDate" @change="loadDailySchedule">
+          </div>
+          <button class="btn btn-light rounded-circle shadow-sm border" @click="changeDate(-1)" title="Día Anterior"><i class="fas fa-chevron-left"></i></button>
+          <button class="btn btn-light rounded-circle shadow-sm border" @click="changeDate(1)" title="Día Siguiente"><i class="fas fa-chevron-right"></i></button>
         </div>
-        <button class="btn btn-light rounded-circle shadow-sm border" @click="changeDate(-1)" title="Día Anterior"><i class="fas fa-chevron-left"></i></button>
-        <button class="btn btn-light rounded-circle shadow-sm border" @click="changeDate(1)" title="Día Siguiente"><i class="fas fa-chevron-right"></i></button>
-      </div>
 
-      <div class="row g-4">
-        <div class="col-md-4" v-for="mealType in ['DESAYUNO', 'COMIDA', 'CENA']" :key="mealType">
-          <div class="card h-100 border-0 rounded-4 shadow-sm overflow-hidden" :class="scheduleMap[mealType] ? 'border-warning border-2' : 'border-light border-2'">
-            
-            <!-- Assigned State -->
-            <div v-if="scheduleMap[mealType]">
-              <div class="position-relative bg-light" style="height: 160px;">
-                <img v-if="scheduleMap[mealType].image_url" :src="scheduleMap[mealType].image_url" class="w-100 h-100 object-fit-cover">
-                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center bg-warning bg-opacity-25 text-warning">
-                  <i class="fas fa-camera fa-3x opacity-50"></i>
+        <div class="row g-4">
+          <div class="col-md-4" v-for="mealType in ['DESAYUNO', 'COMIDA', 'CENA']" :key="mealType">
+            <div class="card h-100 border-0 rounded-4 shadow-sm overflow-hidden" :class="scheduleMap[mealType] ? 'border-warning border-2' : 'border-light border-2'">
+              
+              <!-- Assigned State -->
+              <div v-if="scheduleMap[mealType]">
+                <div class="position-relative bg-light" style="height: 160px;">
+                  <img v-if="scheduleMap[mealType].image_url" :src="scheduleMap[mealType].image_url" class="w-100 h-100 object-fit-cover">
+                  <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center bg-warning bg-opacity-25 text-warning">
+                    <i class="fas fa-camera fa-3x opacity-50"></i>
+                  </div>
+                  <div class="position-absolute top-0 start-0 m-3">
+                    <span class="badge bg-warning text-dark shadow-sm px-3 py-2 fw-bold rounded-pill"><i class="fas fa-clock me-1"></i> {{ mealType }}</span>
+                  </div>
                 </div>
-                <div class="position-absolute top-0 start-0 m-3">
-                  <span class="badge bg-warning text-dark shadow-sm px-3 py-2 fw-bold rounded-pill"><i class="fas fa-clock me-1"></i> {{ mealType }}</span>
+                <div class="card-body p-4 d-flex flex-column bg-white">
+                  <h5 class="fw-bold mb-2 text-dark">{{ scheduleMap[mealType].title }}</h5>
+                  <p class="text-muted small mb-4 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                    {{ scheduleMap[mealType].description || 'Sin descripción detallada.' }}
+                  </p>
+                  <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                    <div class="form-check form-switch m-0 p-0 d-flex align-items-center gap-2">
+                      <input class="form-check-input m-0" type="checkbox" role="switch" :checked="scheduleMap[mealType].is_active === 1" @change="toggleDailyActive(scheduleMap[mealType])" style="width: 2.2em; height: 1.1em; cursor: pointer;">
+                      <span class="small fw-bold" :class="scheduleMap[mealType].is_active === 1 ? 'text-success' : 'text-muted'">{{ scheduleMap[mealType].is_active === 1 ? 'Activado' : 'Pausado' }}</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-sm btn-light text-primary rounded-circle border shadow-sm hover-scale" @click="openAssignModal(mealType, scheduleMap[mealType])"><i class="fas fa-exchange-alt"></i></button>
+                      <button class="btn btn-sm btn-light text-danger rounded-circle border shadow-sm hover-scale" @click="removeDailyMenu(scheduleMap[mealType].id)"><i class="fas fa-trash"></i></button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="card-body p-4 d-flex flex-column bg-white">
-                <h5 class="fw-bold mb-2 text-dark">{{ scheduleMap[mealType].title }}</h5>
-                <p class="text-muted small mb-4 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
-                  {{ scheduleMap[mealType].description || 'Sin descripción detallada.' }}
+
+              <!-- Empty State -->
+              <div v-else class="card-body p-5 text-center d-flex flex-column align-items-center justify-content-center h-100 bg-light">
+                <span class="badge bg-light text-secondary border shadow-sm px-3 py-2 fw-bold rounded-pill mb-3"><i class="fas fa-clock me-1"></i> {{ mealType }}</span>
+                <div class="bg-white rounded-circle shadow-sm d-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                  <i class="fas fa-utensils fa-xl text-muted opacity-50"></i>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">Sin Programar</h6>
+                <p class="small text-muted mb-4">No hay menú asignado.</p>
+                <button class="btn btn-warning rounded-pill fw-bold shadow-sm px-4 w-100 hover-scale" @click="openAssignModal(mealType, null)">
+                  Asignar Platillo
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- TAB 2: BIBLIOTECA DE MENÚS (LIBRARY)           -->
+      <!-- ============================================== -->
+      <div v-if="activeTab === 'library'" class="fade-in">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="position-relative w-100" style="max-width: 400px;">
+            <i class="fas fa-search position-absolute text-muted" style="left: 15px; top: 12px;"></i>
+            <input type="text" class="form-control rounded-pill ps-5 bg-white border-0 shadow-sm py-2" placeholder="Buscar en la biblioteca..." v-model="searchLibrary">
+          </div>
+          <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm hover-scale" @click="openLibraryModal()">
+            <i class="fas fa-plus me-1"></i> Nueva Receta
+          </button>
+        </div>
+
+        <div class="row g-4" v-if="filteredLibrary.length > 0">
+          <div class="col-md-4 col-lg-3" v-for="tpl in filteredLibrary" :key="tpl.id">
+            <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden hover-card bg-white">
+              <div class="position-relative bg-light" style="height: 140px;">
+                <img v-if="tpl.image_url" :src="tpl.image_url" class="w-100 h-100 object-fit-cover">
+                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center text-muted opacity-25">
+                  <i class="fas fa-image fa-3x"></i>
+                </div>
+              </div>
+              <div class="card-body p-3 d-flex flex-column">
+                <h6 class="fw-bold mb-1 text-dark">{{ tpl.title }}</h6>
+                <p class="text-muted small mb-3 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
+                  {{ tpl.description || 'Sin descripción.' }}
                 </p>
-                <div class="d-flex justify-content-between align-items-center border-top pt-3">
-                  <div class="form-check form-switch m-0 p-0 d-flex align-items-center gap-2">
-                    <input class="form-check-input m-0" type="checkbox" role="switch" :checked="scheduleMap[mealType].is_active === 1" @change="toggleDailyActive(scheduleMap[mealType])" style="width: 2.2em; height: 1.1em; cursor: pointer;">
-                    <span class="small fw-bold" :class="scheduleMap[mealType].is_active === 1 ? 'text-success' : 'text-muted'">{{ scheduleMap[mealType].is_active === 1 ? 'Activado' : 'Pausado' }}</span>
-                  </div>
-                  <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-light text-primary rounded-circle border shadow-sm hover-scale" @click="openAssignModal(mealType, scheduleMap[mealType])"><i class="fas fa-exchange-alt"></i></button>
-                    <button class="btn btn-sm btn-light text-danger rounded-circle border shadow-sm hover-scale" @click="removeDailyMenu(scheduleMap[mealType].id)"><i class="fas fa-trash"></i></button>
-                  </div>
+                <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                  <button class="btn btn-sm btn-light text-primary rounded-pill fw-semibold border shadow-sm" @click="openLibraryModal(tpl)">Editar</button>
+                  <button class="btn btn-sm btn-light text-danger rounded-circle border shadow-sm" @click="deleteLibraryTemplate(tpl.id)"><i class="fas fa-trash"></i></button>
                 </div>
               </div>
             </div>
-
-            <!-- Empty State -->
-            <div v-else class="card-body p-5 text-center d-flex flex-column align-items-center justify-content-center h-100 bg-light">
-              <span class="badge bg-light text-secondary border shadow-sm px-3 py-2 fw-bold rounded-pill mb-3"><i class="fas fa-clock me-1"></i> {{ mealType }}</span>
-              <div class="bg-white rounded-circle shadow-sm d-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                <i class="fas fa-utensils fa-xl text-muted opacity-50"></i>
-              </div>
-              <h6 class="fw-bold text-dark mb-1">Sin Programar</h6>
-              <p class="small text-muted mb-4">No hay menú asignado.</p>
-              <button class="btn btn-warning rounded-pill fw-bold shadow-sm px-4 w-100 hover-scale" @click="openAssignModal(mealType, null)">
-                Asignar Platillo
-              </button>
-            </div>
-
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- ============================================== -->
-    <!-- TAB 2: BIBLIOTECA DE MENÚS (LIBRARY)           -->
-    <!-- ============================================== -->
-    <div v-if="activeTab === 'library'" class="fade-in">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="position-relative w-100" style="max-width: 400px;">
-          <i class="fas fa-search position-absolute text-muted" style="left: 15px; top: 12px;"></i>
-          <input type="text" class="form-control rounded-pill ps-5 bg-white border-0 shadow-sm py-2" placeholder="Buscar en la biblioteca..." v-model="searchLibrary">
+        <div v-else class="text-center py-5 bg-white rounded-4 shadow-sm border border-dashed">
+          <i class="fas fa-book-open fa-3x text-muted opacity-25 mb-3"></i>
+          <h5 class="fw-bold text-dark">Biblioteca Vacía</h5>
+          <p class="text-muted">No tienes platillos guardados para este plantel.</p>
         </div>
-        <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm hover-scale" @click="openLibraryModal()">
-          <i class="fas fa-plus me-1"></i> Nueva Receta
-        </button>
-      </div>
-
-      <div class="row g-4" v-if="filteredLibrary.length > 0">
-        <div class="col-md-4 col-lg-3" v-for="tpl in filteredLibrary" :key="tpl.id">
-          <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden hover-card bg-white">
-            <div class="position-relative bg-light" style="height: 140px;">
-              <img v-if="tpl.image_url" :src="tpl.image_url" class="w-100 h-100 object-fit-cover">
-              <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center text-muted opacity-25">
-                <i class="fas fa-image fa-3x"></i>
-              </div>
-            </div>
-            <div class="card-body p-3 d-flex flex-column">
-              <h6 class="fw-bold mb-1 text-dark">{{ tpl.title }}</h6>
-              <p class="text-muted small mb-3 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
-                {{ tpl.description || 'Sin descripción.' }}
-              </p>
-              <div class="d-flex justify-content-end gap-2 pt-2 border-top">
-                <button class="btn btn-sm btn-light text-primary rounded-pill fw-semibold border shadow-sm" @click="openLibraryModal(tpl)">Editar</button>
-                <button class="btn btn-sm btn-light text-danger rounded-circle border shadow-sm" @click="deleteLibraryTemplate(tpl.id)"><i class="fas fa-trash"></i></button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div v-else class="text-center py-5 bg-white rounded-4 shadow-sm border border-dashed">
-        <i class="fas fa-book-open fa-3x text-muted opacity-25 mb-3"></i>
-        <h5 class="fw-bold text-dark">Biblioteca Vacía</h5>
-        <p class="text-muted">No tienes platillos guardados. Añade recetas para reutilizarlas en tu programación.</p>
       </div>
     </div>
 
@@ -290,6 +306,9 @@ import { logger } from '../utils/logger'
 const loading = ref(false)
 const activeTab = ref('schedule')
 
+const allowedPlanteles = ["PREET", "PREEM", "PT", "PM", "ST", "SM", "ISM", "DM", "CM", "CT"]
+const selectedPlantel = ref(null)
+
 // Schedule State
 const selectedDate = ref(new Date().toISOString().split('T')[0])
 const dailyMenus = ref([])
@@ -310,15 +329,25 @@ const libraryData = ref({ id: null, title: '', description: '', image_url: '' })
 const uploadingImage = ref(false)
 
 onMounted(() => {
-  loadDailySchedule()
-  loadLibrary()
+  // Wait for user to select a plantel
 })
+
+const onPlantelChange = () => {
+  if (selectedPlantel.value) {
+    loadDailySchedule()
+    loadLibrary()
+  } else {
+    dailyMenus.value = []
+    library.value = []
+  }
+}
 
 // --- DATA FETCHING ---
 const loadDailySchedule = async () => {
+  if (!selectedPlantel.value) return
   loading.value = true
   try {
-    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${selectedDate.value}`)
+    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${selectedDate.value}&plantel=${selectedPlantel.value}`)
     dailyMenus.value = res.data
   } catch (e) {
     logger.error('Error fetching daily menus', e)
@@ -328,8 +357,9 @@ const loadDailySchedule = async () => {
 }
 
 const loadLibrary = async () => {
+  if (!selectedPlantel.value) return
   try {
-    const res = await axios.get('https://matricula.casitaapps.com/api/menu-library')
+    const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?plantel=${selectedPlantel.value}`)
     library.value = res.data
   } catch (e) {
     logger.error('Error fetching library', e)
@@ -393,6 +423,7 @@ const saveDailyAssignment = async () => {
   try {
     const payload = {
       id: assignData.value.id,
+      plantel: selectedPlantel.value,
       meal_date: assignData.value.meal_date,
       meal_type: assignData.value.meal_type,
       title: assignData.value.title,
@@ -456,10 +487,11 @@ const openLibraryModal = (tpl = null) => {
 const saveLibraryTemplate = async () => {
   loading.value = true
   try {
-    if (libraryData.value.id) {
-      await axios.put(`https://matricula.casitaapps.com/api/menu-library/${libraryData.value.id}`, libraryData.value)
+    const payload = { ...libraryData.value, plantel: selectedPlantel.value }
+    if (payload.id) {
+      await axios.put(`https://matricula.casitaapps.com/api/menu-library/${payload.id}`, payload)
     } else {
-      await axios.post('https://matricula.casitaapps.com/api/menu-library', libraryData.value)
+      await axios.post('https://matricula.casitaapps.com/api/menu-library', payload)
     }
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Receta Guardada', showConfirmButton: false, timer: 2000 })
     showLibraryModal.value = false
