@@ -71,8 +71,48 @@
         </div>
       </div>
 
+      <!-- Menú del Día Banner (Only for Meal Services) -->
+      <div v-if="isMealService" class="mb-4 fade-in">
+        <div v-if="loadingMenu" class="d-flex justify-content-center p-3">
+          <div class="spinner-border text-warning spinner-border-sm" role="status"></div>
+        </div>
+        <div v-else>
+          <div v-if="todayMenu" class="d-flex align-items-center justify-content-between p-3 bg-white rounded-4 shadow-sm border border-warning border-opacity-50 flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <img v-if="todayMenu.image_url" :src="todayMenu.image_url" class="rounded-3 object-fit-cover shadow-sm" style="width: 70px; height: 70px;">
+              <div v-else class="rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center border border-warning border-opacity-25" style="width: 70px; height: 70px;">
+                <i class="fas fa-utensils fa-2x"></i>
+              </div>
+              <div>
+                <span class="badge bg-warning text-dark mb-1 shadow-sm">Menú de Hoy ({{ currentWorkshop.servicio }})</span>
+                <h6 class="fw-bold mb-1 text-dark">{{ todayMenu.title }}</h6>
+                <small class="text-muted d-block" style="max-width: 300px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ todayMenu.description }}</small>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-light text-warning fw-bold shadow-sm rounded-pill hover-scale border" @click="openInlineMenuEditor(todayMenu)">
+                <i class="fas fa-pen me-1"></i> Editar Menú
+              </button>
+            </div>
+          </div>
+          <div v-else class="d-flex align-items-center justify-content-between p-3 bg-light rounded-4 shadow-sm border border-dashed flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3 text-muted">
+              <div class="rounded-circle bg-white d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px;">
+                <i class="fas fa-exclamation-circle text-warning fa-xl"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold mb-0 text-dark">No hay menú registrado para hoy</h6>
+                <small>Los padres no recibirán notificación del platillo.</small>
+              </div>
+            </div>
+            <button class="btn btn-warning fw-bold shadow-sm rounded-pill text-dark hover-scale" @click="openInlineMenuEditor(null)">
+              <i class="fas fa-plus me-1"></i> Añadir Menú Rápido
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="bg-white rounded-4 shadow-sm border p-4">
-        
         <!-- NAVEGACIÓN DE GRUPOS (Horizontal Scroll) -->
         <div class="d-flex gap-2 overflow-auto py-2 custom-scrollbar mb-4 border-bottom pb-3 align-items-center">
           <button class="btn rounded-pill fw-bold border shadow-sm px-4 flex-shrink-0 transition-all" 
@@ -96,7 +136,7 @@
             </span>
           </button>
 
-          <button class="btn btn-light text-primary rounded-pill fw-bold border border-dashed px-4 flex-shrink-0 shadow-sm hover-scale" @click="promptCreateGrupo">
+          <button class="btn btn-light text-primary rounded-pill fw-bold border border-dashed px-4 flex-shrink-0 shadow-sm hover-scale" @click="promptCreateGrupo(false)">
             <i class="fas fa-plus me-1"></i> Nuevo Grupo
           </button>
         </div>
@@ -293,6 +333,52 @@
       </div>
     </div>
 
+    <!-- Modal Editor de Menú Inline -->
+    <div v-if="showMenuEditor" class="modal-backdrop fade show z-modal-bg"></div>
+    <div v-if="showMenuEditor" class="modal fade show d-block z-modal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+          <div class="modal-header border-bottom-0 pb-0 bg-light">
+            <h5 class="modal-title fw-bold text-dark"><i class="fas fa-utensils text-warning me-2"></i> {{ menuFormData.id ? 'Editar Menú' : 'Nuevo Menú' }}</h5>
+            <button type="button" class="btn-close" @click="closeMenuEditor"></button>
+          </div>
+          <div class="modal-body p-4 bg-light pt-3">
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-muted">Título del Plato Principal</label>
+              <input type="text" class="form-control rounded-pill border-0 shadow-sm" v-model="menuFormData.title" placeholder="Ej: Pechuga empanizada con arroz">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-muted">Descripción (Se enviará a los padres)</label>
+              <textarea class="form-control rounded-4 border-0 shadow-sm" v-model="menuFormData.description" rows="3" placeholder="Detalle nutricional o ingredientes principales..."></textarea>
+            </div>
+            <div class="mb-4">
+              <label class="form-label small fw-bold text-muted d-block">Fotografía del Platillo (Opcional)</label>
+              <div class="border-2 border-dashed rounded-4 p-3 text-center bg-white cursor-pointer" @click="triggerInlineFileInput">
+                <input type="file" ref="inlineFileInput" class="d-none" accept="image/*" @change="handleInlineFileSelect" />
+                <div v-if="menuFormData.image_url" class="position-relative">
+                  <img :src="menuFormData.image_url" class="img-fluid rounded-3 object-fit-cover shadow-sm" style="max-height: 150px; width: 100%;" />
+                  <button class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle shadow hover-scale" @click.stop="menuFormData.image_url = ''" title="Remover imagen">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+                <div v-else-if="uploadingMenuImage" class="py-3">
+                  <div class="spinner-border text-warning mb-2"></div>
+                  <p class="text-muted small mb-0 fw-bold">Subiendo imagen...</p>
+                </div>
+                <div v-else class="py-2">
+                  <i class="fas fa-camera fa-2x text-warning mb-2"></i>
+                  <p class="text-muted small mb-0">Haz clic para subir fotografía</p>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-warning w-100 rounded-pill py-3 fw-bold shadow-sm text-dark hover-scale" @click="saveInlineMenu" :disabled="!menuFormData.title || uploadingMenuImage">
+              {{ menuFormData.id ? 'Guardar Cambios' : 'Crear Menú' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Timeline Modal -->
     <div v-if="viewingTimelineStu" class="modal-backdrop fade show z-modal-bg"></div>
     <div v-if="viewingTimelineStu" class="modal fade show d-block z-modal" tabindex="-1">
@@ -379,6 +465,114 @@ const grupos = ref([])
 const activeGrupo = ref(null)
 
 const allowedPlanteles = ["PREET", "PREEM", "PT", "PM", "ST", "SM", "ISM", "DM", "CM", "CT"]
+
+// --- Meal Menus Context ---
+const isMealService = computed(() => {
+  if (!currentWorkshop.value) return false;
+  return ['DESAYUNO', 'COMIDA', 'CENA'].includes(currentWorkshop.value.servicio.toUpperCase());
+});
+
+const todayMenu = ref(null);
+const loadingMenu = ref(false);
+
+const fetchTodayMenu = async () => {
+  if (!isMealService.value) return;
+  loadingMenu.value = true;
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&type=${currentWorkshop.value.servicio.toUpperCase()}`);
+    if (res.data && res.data.length > 0) {
+      todayMenu.value = res.data[0];
+    } else {
+      todayMenu.value = null;
+    }
+  } catch (e) {
+    logger.error('Failed to fetch today menu', e);
+  } finally {
+    loadingMenu.value = false;
+  }
+}
+
+// Inline Menu Editor State & Methods
+const showMenuEditor = ref(false);
+const uploadingMenuImage = ref(false);
+const inlineFileInput = ref(null);
+const menuFormData = ref({
+  id: null,
+  meal_date: '',
+  meal_type: '',
+  title: '',
+  description: '',
+  image_url: '',
+  is_active: true
+});
+
+const openInlineMenuEditor = (menu) => {
+  if (menu) {
+    menuFormData.value = { ...menu, meal_date: menu.meal_date.split('T')[0], is_active: !!menu.is_active };
+  } else {
+    menuFormData.value = {
+      id: null,
+      meal_date: new Date().toISOString().split('T')[0],
+      meal_type: currentWorkshop.value.servicio.toUpperCase(),
+      title: '',
+      description: '',
+      image_url: '',
+      is_active: true
+    };
+  }
+  showMenuEditor.value = true;
+};
+
+const closeMenuEditor = () => { showMenuEditor.value = false; };
+
+const triggerInlineFileInput = () => {
+  if (!uploadingMenuImage.value && inlineFileInput.value) inlineFileInput.value.click();
+};
+
+const handleInlineFileSelect = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) return Swal.fire('Inválido', 'Solo imágenes.', 'warning');
+  if (file.size > 5 * 1024 * 1024) return Swal.fire('Error', 'Max 5MB.', 'warning');
+
+  uploadingMenuImage.value = true;
+  try {
+    const form = new FormData();
+    form.append('image', file);
+    const res = await axios.post('https://matricula.casitaapps.com/api/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    menuFormData.value.image_url = res.data.url;
+  } catch (error) {
+    logger.error('Inline image upload failed', error);
+    Swal.fire('Error', 'No se pudo subir la imagen.', 'error');
+  } finally {
+    uploadingMenuImage.value = false;
+    if (inlineFileInput.value) inlineFileInput.value.value = '';
+  }
+};
+
+const saveInlineMenu = async () => {
+  loading.value = true;
+  try {
+    const payload = { ...menuFormData.value, is_active: menuFormData.value.is_active ? 1 : 0 };
+    if (payload.id) {
+      await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${payload.id}`, payload);
+    } else {
+      await axios.post('https://matricula.casitaapps.com/api/meal-menus', payload);
+    }
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Guardado', showConfirmButton: false, timer: 2000 });
+    closeMenuEditor();
+    fetchTodayMenu();
+  } catch (e) {
+    logger.error('Failed to save inline menu', e);
+    Swal.fire('Error', 'No se pudo guardar el menú.', 'error');
+  } finally {
+    loading.value = false;
+  }
+};
+// ------------------------------
 
 onMounted(() => {
   const stored = localStorage.getItem('workshop_shortcuts')
@@ -495,17 +689,14 @@ const loadGrupos = async () => {
    if (!currentWorkshop.value) return;
    const key = getGruposKey();
    
-   // Carga ultrarrápida local
    const local = localStorage.getItem(key);
    if (local) grupos.value = JSON.parse(local);
    else grupos.value = [];
 
-   // Sync remoto (usamos el término 'dossiers' en la API para mantener compatibilidad, pero en UI es 'grupos')
    try {
      const res = await axios.get(`https://bot.casitaapps.com/api/talleres/dossiers`, {
        params: { teacher_id: getTeacherId(), plantel: currentWorkshop.value.plantel, servicio: currentWorkshop.value.servicio }
      });
-     // Compatibilidad de API (puede que el backend responda con 'dossiers')
      if (res.data && res.data.dossiers) {
        grupos.value = res.data.dossiers;
        localStorage.setItem(key, JSON.stringify(grupos.value));
@@ -517,13 +708,13 @@ const loadGrupos = async () => {
 
 const saveGruposRemote = async () => {
    const key = getGruposKey();
-   localStorage.setItem(key, JSON.stringify(grupos.value)); // Guardado local optimista
+   localStorage.setItem(key, JSON.stringify(grupos.value));
    try {
      await axios.post(`https://bot.casitaapps.com/api/talleres/dossiers`, {
        teacher_id: getTeacherId(),
        plantel: currentWorkshop.value.plantel,
        servicio: currentWorkshop.value.servicio,
-       dossiers: grupos.value // El backend espera llave 'dossiers'
+       dossiers: grupos.value
      });
    } catch(e) {
      logger.warn('Fallo al sincronizar grupos remotamente.', e);
@@ -556,7 +747,6 @@ const promptCreateGrupo = async (fromModal = false) => {
      allSelected.value = false;
      Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Grupo creado exitosamente', showConfirmButton: false, timer: 2000});
    } else if (fromModal) {
-     // Reabrir modal si el usuario canceló la creación
      showGroupSelectModal.value = true;
    }
 }
@@ -599,7 +789,7 @@ const removeFromGrupo = () => {
 }
 
 const removeGrupo = async (grupoId) => {
-   const conf = await Swal.fire({ title: '¿Eliminar Grupo?', text: 'Los alumnos no se borrarán del taller general, solo se eliminará esta agrupación.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, eliminar', confirmButtonColor: '#ef4444' });
+   const conf = await Swal.fire({ title: '¿Eliminar Grupo?', text: 'Los alumnos no se borrarán del taller general.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, eliminar', confirmButtonColor: '#ef4444' });
    if (!conf.isConfirmed) return;
 
    grupos.value = grupos.value.filter(g => g.id !== grupoId);
@@ -622,14 +812,11 @@ const openWorkshop = async (shortcut) => {
   activeGrupo.value = null
   showGroupSelectModal.value = false
   
-  // Load custom sort order
   const savedSort = localStorage.getItem(getSortKey())
   customSortOrder.value = savedSort ? JSON.parse(savedSort) : []
 
-  // Load Grupos Preferences
   loadGrupos();
 
-  // Fast Render from Cache
   const cachedData = localStorage.getItem(getCacheKey())
   if (cachedData) {
     studentsList.value = applySortOrder(JSON.parse(cachedData))
@@ -640,8 +827,8 @@ const openWorkshop = async (shortcut) => {
     loading.value = true 
   }
 
-  // Background Sync Data
-  await fetchWorkshopData()
+  await fetchWorkshopData();
+  if (isMealService.value) fetchTodayMenu();
 }
 
 const manualRefresh = async () => {
@@ -649,12 +836,12 @@ const manualRefresh = async () => {
   await fetchWorkshopData()
   await fetchAttendance()
   await fetchTimeline()
+  if (isMealService.value) fetchTodayMenu();
   loading.value = false
 }
 
 const fetchWorkshopData = async () => {
   if(!currentWorkshop.value) return;
-  // Use syncing state to avoid blocking UI if we already loaded from cache
   if (!syncing.value) loading.value = true;
   
   try {
@@ -664,7 +851,6 @@ const fetchWorkshopData = async () => {
       localStorage.setItem(getCacheKey(), JSON.stringify(freshList))
       studentsList.value = applySortOrder(freshList)
       
-      // Update missing customSortOrder entries
       if(customSortOrder.value.length === 0 && freshList.length > 0) {
         customSortOrder.value = freshList.map(s => s.matricula)
         localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
@@ -705,25 +891,19 @@ const closeWorkshop = () => {
   selectedForAttendance.value = []
   sortMode.value = false
   activeGrupo.value = null
+  todayMenu.value = null
 }
 
 const filteredStudents = computed(() => {
   const q = searchText.value.toLowerCase()
   let list = studentsList.value
 
-  // Filtrar por Grupo Activo
   if (activeGrupo.value) {
     const grp = grupos.value.find(g => g.id === activeGrupo.value);
-    if (grp) {
-      list = list.filter(s => grp.students.includes(s.matricula));
-    }
+    if (grp) list = list.filter(s => grp.students.includes(s.matricula));
   }
 
-  // Filtrar por Búsqueda
-  if (q) {
-    list = list.filter(s => s.nombreCompleto.toLowerCase().includes(q) || s.matricula.toLowerCase().includes(q))
-  }
-  
+  if (q) list = list.filter(s => s.nombreCompleto.toLowerCase().includes(q) || s.matricula.toLowerCase().includes(q))
   return applySortOrder(list)
 })
 
@@ -759,7 +939,6 @@ const toggleSelectAll = () => {
   if (allSelected.value) {
     selectedForAttendance.value = []
   } else {
-    // Solo seleccionar los visibles/filtrados
     selectedForAttendance.value = filteredStudents.value.map(s => s.matricula)
   }
   allSelected.value = !allSelected.value
@@ -769,7 +948,14 @@ const recordSelectedAttendance = async () => {
   loading.value = true
   try {
     await axios.post('https://bot.casitaapps.com/record-attendance-bulk', { matriculas: selectedForAttendance.value, servicio: currentWorkshop.value.servicio })
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asistencia Guardada', showConfirmButton: false, timer: 2000 })
+    
+    // Meal Workflow Trigger
+    if (isMealService.value) {
+      await triggerParentNotifications(selectedForAttendance.value);
+    } else {
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asistencia Guardada', showConfirmButton: false, timer: 2000 })
+    }
+
     clearSelection();
     await fetchAttendance()
   } catch (e) {
@@ -779,7 +965,39 @@ const recordSelectedAttendance = async () => {
   }
 }
 
-// Sorting feature
+const triggerParentNotifications = async (matriculasIds) => {
+    const studentsToNotify = matriculasIds.map(m => {
+        const s = studentsList.value.find(x => x.matricula === m);
+        return { matricula: m, nombreCompleto: s ? s.nombreCompleto : m };
+    });
+
+    try {
+        const res = await axios.post('https://matricula.casitaapps.com/api/meal-menus/notify-parents', {
+            students: studentsToNotify,
+            servicio: currentWorkshop.value.servicio,
+            plantel: currentWorkshop.value.plantel,
+            date: new Date().toISOString().split('T')[0]
+        });
+        
+        Swal.fire('Asistencia y Notificación', `Se guardó asistencia y se enviaron ${res.data.sentCount} correos a los padres.`, 'success');
+    } catch (e) {
+        logger.error('Failed to notify parents', e);
+        Swal.fire({
+            title: 'Correos Fallidos',
+            text: 'La asistencia se guardó correctamente, pero el envío de correos falló. ¿Deseas reintentar?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Reintentar',
+            cancelButtonText: 'No enviar'
+        }).then(result => {
+            if (result.isConfirmed) {
+                loading.value = true;
+                triggerParentNotifications(matriculasIds).finally(() => loading.value = false);
+            }
+        });
+    }
+}
+
 const toggleSortMode = () => {
   sortMode.value = !sortMode.value
   searchText.value = '' 
@@ -805,11 +1023,10 @@ const moveStudent = (index, direction) => {
     customSortOrder.value[idxB] = temp
     
     localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
-    studentsList.value = [...studentsList.value] // Force re-eval
+    studentsList.value = [...studentsList.value] 
   }
 }
 
-// Incidencias Flow
 const openIncidenciaModal = async (stu) => {
   const { value: formValues } = await Swal.fire({
     title: `Reportar: ${stu.nombreCompleto}`,
@@ -886,7 +1103,6 @@ const openIncidenciaModal = async (stu) => {
 .slide-up-enter-active, .slide-up-leave-active { transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(20px); }
 
-/* Custom Scrollbar for pills */
 .custom-scrollbar::-webkit-scrollbar { height: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
