@@ -116,7 +116,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div class="position-relative w-100" style="max-width: 400px;">
             <i class="fas fa-search position-absolute text-muted" style="left: 15px; top: 12px;"></i>
-            <input type="text" class="form-control rounded-pill ps-5 bg-white border-0 shadow-sm py-2" placeholder="Buscar en la biblioteca..." v-model="searchLibrary">
+            <input type="text" class="form-control rounded-pill ps-5 bg-white border-0 shadow-sm py-2" placeholder="Buscar en la biblioteca global..." v-model="searchLibrary">
           </div>
           <button class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm hover-scale" @click="openLibraryModal()">
             <i class="fas fa-plus me-1"></i> Nueva Receta
@@ -133,7 +133,10 @@
                 </div>
               </div>
               <div class="card-body p-3 d-flex flex-column">
-                <h6 class="fw-bold mb-1 text-dark">{{ tpl.title }}</h6>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <h6 class="fw-bold mb-0 text-dark text-truncate">{{ tpl.title }}</h6>
+                  <span class="badge bg-light text-secondary border flex-shrink-0 ms-2" v-if="tpl.plantel" style="font-size: 0.65rem;">{{ tpl.plantel }}</span>
+                </div>
                 <p class="text-muted small mb-3 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
                   {{ tpl.description || 'Sin descripción.' }}
                 </p>
@@ -148,7 +151,7 @@
         <div v-else class="text-center py-5 bg-white rounded-4 shadow-sm border border-dashed">
           <i class="fas fa-book-open fa-3x text-muted opacity-25 mb-3"></i>
           <h5 class="fw-bold text-dark">Biblioteca Vacía</h5>
-          <p class="text-muted">No tienes platillos guardados para este plantel.</p>
+          <p class="text-muted">No hay platillos guardados en la biblioteca.</p>
         </div>
       </div>
     </div>
@@ -194,7 +197,10 @@
                         <i class="fas fa-image fa-lg"></i>
                       </div>
                       <div class="flex-grow-1 overflow-hidden py-1">
-                        <h6 class="fw-bold mb-1 text-dark text-truncate">{{ tpl.title }}</h6>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                          <h6 class="fw-bold mb-0 text-dark text-truncate">{{ tpl.title }}</h6>
+                          <span class="badge bg-light text-secondary border flex-shrink-0" v-if="tpl.plantel" style="font-size: 0.65rem;">{{ tpl.plantel }}</span>
+                        </div>
                         <p class="small text-muted mb-0" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3;">{{ tpl.description }}</p>
                       </div>
                       <div class="d-flex align-items-center px-2">
@@ -303,6 +309,11 @@ import axios from 'axios'
 import Swal from 'sweetalert2'
 import { logger } from '../utils/logger'
 
+const getLocalTodayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const loading = ref(false)
 const activeTab = ref('schedule')
 
@@ -310,7 +321,7 @@ const allowedPlanteles = ["PREET", "PREEM", "PT", "PM", "ST", "SM", "ISM", "DM",
 const selectedPlantel = ref(null)
 
 // Schedule State
-const selectedDate = ref(new Date().toISOString().split('T')[0])
+const selectedDate = ref(getLocalTodayStr())
 const dailyMenus = ref([])
 
 // Library State
@@ -359,7 +370,8 @@ const loadDailySchedule = async () => {
 const loadLibrary = async () => {
   if (!selectedPlantel.value) return
   try {
-    const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?plantel=${selectedPlantel.value}`)
+    // Al remover ?plantel=... trae toda la biblioteca de platillos y son reutilizables.
+    const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library`)
     library.value = res.data
   } catch (e) {
     logger.error('Error fetching library', e)

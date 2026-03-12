@@ -358,7 +358,7 @@
 
             <!-- Panel Library -->
             <div v-if="menuTab === 'library'" class="p-4 bg-light" style="max-height: 55vh; overflow-y: auto;">
-               <input type="text" class="form-control rounded-pill border-0 shadow-sm mb-4 py-2 px-4" placeholder="Buscar recetas guardadas de este plantel..." v-model="searchMenuLibrary">
+               <input type="text" class="form-control rounded-pill border-0 shadow-sm mb-4 py-2 px-4" placeholder="Buscar recetas guardadas..." v-model="searchMenuLibrary">
                <div class="row g-3">
                  <div class="col-md-6" v-for="tpl in filteredMenuLibrary" :key="tpl.id">
                     <div class="card h-100 border border-2 shadow-sm rounded-4 cursor-pointer hover-card transition-all"
@@ -370,7 +370,10 @@
                           <i class="fas fa-image fa-lg"></i>
                         </div>
                         <div class="flex-grow-1 overflow-hidden py-1">
-                          <h6 class="fw-bold mb-0 text-dark text-truncate">{{ tpl.title }}</h6>
+                          <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="fw-bold mb-0 text-dark text-truncate">{{ tpl.title }}</h6>
+                            <span class="badge bg-light text-secondary border flex-shrink-0" v-if="tpl.plantel" style="font-size: 0.6rem;">{{ tpl.plantel }}</span>
+                          </div>
                           <p class="small text-muted mb-0 text-truncate">{{ tpl.description }}</p>
                         </div>
                         <div class="pe-2">
@@ -380,7 +383,7 @@
                     </div>
                  </div>
                  <div v-if="filteredMenuLibrary.length === 0" class="col-12 text-center py-4 text-muted">
-                   No hay recetas guardadas para {{ currentWorkshop.plantel }}. Crea una en la otra pestaña o usa la administración de menús.
+                   No hay recetas guardadas en la biblioteca. Crea una en la pestaña "Crear Plato Rápido" o usa la administración de menús.
                  </div>
                </div>
             </div>
@@ -482,6 +485,11 @@ import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 
+const getLocalTodayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const loading = ref(false)
 const syncing = ref(false)
 const savedShortcuts = ref([])
@@ -526,10 +534,11 @@ const fetchTodayMenu = async () => {
   if (!isMealService.value || !currentWorkshop.value) return;
   loadingMenu.value = true;
   try {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&type=${currentWorkshop.value.servicio.toUpperCase()}&plantel=${currentWorkshop.value.plantel}`);
+    const todayStr = getLocalTodayStr();
+    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&plantel=${currentWorkshop.value.plantel}`);
     if (res.data && res.data.length > 0) {
-      todayMenu.value = res.data[0];
+      const found = res.data.find(m => m.meal_type === currentWorkshop.value.servicio.toUpperCase());
+      todayMenu.value = found || null;
     } else {
       todayMenu.value = null;
     }
@@ -578,7 +587,7 @@ const openInlineMenuEditor = async (menu) => {
   } else {
     menuFormData.value = {
       id: null,
-      meal_date: new Date().toISOString().split('T')[0],
+      meal_date: getLocalTodayStr(),
       meal_type: currentWorkshop.value.servicio.toUpperCase(),
       title: '',
       description: '',
@@ -590,7 +599,7 @@ const openInlineMenuEditor = async (menu) => {
   
   if (menuLibrary.value.length === 0) {
     try {
-      const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?plantel=${currentWorkshop.value.plantel}`);
+      const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library`);
       menuLibrary.value = res.data;
     } catch(e) {}
   }
@@ -660,7 +669,7 @@ const saveInlineMenu = async () => {
     }
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Asignado', showConfirmButton: false, timer: 2000 });
     closeMenuEditor();
-    fetchTodayMenu();
+    await fetchTodayMenu();
   } catch (e) {
     logger.error('Failed to save inline menu', e);
     Swal.fire('Error', 'No se pudo guardar el menú.', 'error');
@@ -1065,7 +1074,7 @@ const triggerParentNotifications = async (matriculasIds) => {
             students: studentsToNotify,
             servicio: currentWorkshop.value.servicio,
             plantel: currentWorkshop.value.plantel,
-            date: new Date().toISOString().split('T')[0]
+            date: getLocalTodayStr()
         });
         
         if(res.data.sentCount > 0) {
