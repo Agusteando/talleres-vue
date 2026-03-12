@@ -144,20 +144,17 @@
           </button>
         </div>
 
-        <!-- Barra de herramientas (Búsqueda, Filtros y Edición de Grupo) -->
+        <!-- Barra de herramientas -->
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-          
           <div class="position-relative" style="width: 100%; max-width: 350px;">
             <i class="fas fa-search position-absolute text-muted" style="left: 15px; top: 12px;"></i>
             <input type="text" class="form-control rounded-pill ps-5 bg-light border-0 py-2" placeholder="Buscar alumno..." v-model="searchText">
           </div>
           
           <div class="d-flex gap-2 flex-wrap align-items-center">
-            <!-- Botón para eliminar el grupo actual si estamos dentro de uno -->
             <button v-if="activeGrupo" class="btn btn-outline-danger rounded-pill fw-semibold px-4 animation-fade" @click="removeGrupo(activeGrupo)">
               <i class="fas fa-trash-alt me-1"></i> Eliminar Grupo
             </button>
-
             <button class="btn btn-outline-secondary rounded-pill fw-semibold px-4" @click="toggleSortMode" :class="{'active bg-secondary text-white border-secondary': sortMode}">
               <i class="fas fa-sort me-1"></i> {{ sortMode ? 'Finalizar Orden' : 'Reordenar' }}
             </button>
@@ -188,7 +185,7 @@
                 <span class="badge bg-success shadow-sm rounded-pill border border-white pulse-animation"><i class="fas fa-star text-warning me-1"></i> NUEVO</span>
               </div>
 
-              <!-- Indicadores de Grupo Visual (Puntos de colores) -->
+              <!-- Indicadores de Grupo Visual -->
               <div v-if="!activeGrupo && getStudentGrupos(stu.matricula).length > 0" class="position-absolute top-0 end-0 m-2 z-2 d-flex flex-column gap-1" style="pointer-events: none;">
                 <span v-for="gColor in getStudentGrupos(stu.matricula)" :key="gColor" class="badge rounded-circle shadow-sm border border-white p-2" :style="{ backgroundColor: gColor }" title="En Grupo"></span>
               </div>
@@ -200,7 +197,7 @@
                 <button class="btn btn-light rounded-circle shadow-sm" @click.stop="moveStudent(index, 1)" :disabled="index === filteredStudents.length - 1"><i class="fas fa-arrow-down"></i></button>
               </div>
 
-              <!-- Cuerpo de la Tarjeta (Click para seleccionar) -->
+              <!-- Cuerpo de la Tarjeta -->
               <div class="card-body text-center p-3 d-flex flex-column h-100 cursor-pointer" @click="!sortMode && toggleAttendanceSelection(stu.matricula)">
                 <transition name="pop">
                   <div v-if="selectedForAttendance.includes(stu.matricula) || hasAttendedToday(stu.matricula)" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-white bg-opacity-50 rounded-4 z-1" style="pointer-events: none;">
@@ -238,7 +235,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- FLOATING BOTTOM ACTION BAR (CONTEXTUAL)    -->
+    <!-- FLOATING BOTTOM ACTION BAR                 -->
     <!-- ========================================== -->
     <transition name="slide-up">
       <div v-if="selectedForAttendance.length > 0 && !sortMode" class="position-fixed bottom-0 start-0 w-100 p-3 z-top" style="pointer-events: none;">
@@ -249,22 +246,15 @@
           </div>
           
           <div class="d-flex gap-2 flex-grow-1 justify-content-end">
-            <!-- Botón para quitar del grupo (Solo si estamos dentro de un grupo) -->
             <button v-if="activeGrupo" class="btn btn-light text-danger rounded-pill fw-bold border shadow-sm px-3 hover-scale" @click="removeFromGrupo">
               <i class="fas fa-user-minus"></i> <span class="d-none d-md-inline ms-1">Quitar</span>
             </button>
-            
-            <!-- Botón de Agrupar (Abre Modal) -->
             <button class="btn btn-warning text-dark rounded-pill fw-bold border-0 shadow-sm px-3 hover-scale" @click="showGroupSelectModal = true">
               <i class="fas fa-folder-plus"></i> <span class="d-none d-sm-inline ms-1">Agrupar</span>
             </button>
-            
-            <!-- Guardar Asistencia -->
             <button class="btn btn-success rounded-pill fw-bold shadow-sm px-3 hover-scale" @click="recordSelectedAttendance">
               <i class="fas fa-check"></i> <span class="d-none d-sm-inline ms-1">Asistencia</span>
             </button>
-            
-            <!-- Cancelar Selección -->
             <button class="btn btn-light text-danger rounded-circle shadow-sm border" style="width: 40px; height: 40px;" @click="clearSelection" title="Cancelar selección">
               <i class="fas fa-times"></i>
             </button>
@@ -277,7 +267,7 @@
     <!-- MODALS                                     -->
     <!-- ========================================== -->
 
-    <!-- Modal Agregar Taller (Acceso Directo) -->
+    <!-- Modal Agregar Taller -->
     <div v-if="showAddModal" class="modal-backdrop fade show z-modal-bg"></div>
     <div v-if="showAddModal" class="modal fade show d-block z-modal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
@@ -309,7 +299,7 @@
       </div>
     </div>
 
-    <!-- Modal para Seleccionar/Asignar Grupo -->
+    <!-- Modal Seleccionar/Asignar Grupo -->
     <div v-if="showGroupSelectModal" class="modal-backdrop fade show z-modal-bg"></div>
     <div v-if="showGroupSelectModal" class="modal fade show d-block z-modal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -336,7 +326,7 @@
       </div>
     </div>
 
-    <!-- Modal Editor de Menú Inline (Con Picker de Biblioteca Plantel-Aware) -->
+    <!-- Modal Editor de Menú Inline -->
     <div v-if="showMenuEditor" class="modal-backdrop fade show z-modal-bg"></div>
     <div v-if="showMenuEditor" class="modal fade show d-block z-modal" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -485,279 +475,318 @@ import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 
-const getLocalTodayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+// ─── Date Helpers ────────────────────────────────────────────────────────────
 
-const loading = ref(false)
-const syncing = ref(false)
+const getLocalTodayStr = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Normalises any date value from the API into a plain YYYY-MM-DD string.
+ *
+ * ROOT CAUSE OF THE BUG:
+ *   MySQL2 (without `dateStrings: true`) returns DATE columns as JS Date objects.
+ *   JSON.stringify applies the UTC offset, so '2024-01-15' stored in MySQL becomes
+ *   '2024-01-14T18:00:00.000Z' for a UTC-6 server. The frontend splits on 'T' and
+ *   gets '2024-01-14' (yesterday), saves/queries under the wrong date, the GET for
+ *   today returns nothing — hence "success toast, no frontend change, no DB entry".
+ */
+const normaliseDateStr = (raw) => {
+  if (!raw) return ''
+  const s = String(raw)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const isoDate = s.split('T')[0]
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate
+  const d = new Date(raw)
+  if (isNaN(d.getTime())) return s
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// ─── General State ────────────────────────────────────────────────────────────
+
+const loading    = ref(false)
+const syncing    = ref(false)
 const savedShortcuts = ref([])
 
-// Modals state
-const showAddModal = ref(false)
+const showAddModal         = ref(false)
 const showGroupSelectModal = ref(false)
 
-const newShortcutPlantel = ref(null)
-const newShortcutServicio = ref(null)
-const fetchingServices = ref(false)
+const newShortcutPlantel    = ref(null)
+const newShortcutServicio   = ref(null)
+const fetchingServices      = ref(false)
 const availableServicesForAdd = ref([])
 
-const currentWorkshop = ref(null)
-const studentsList = ref([])
-const customSortOrder = ref([]) 
-const attendanceMap = ref({})
-const selectedForAttendance = ref([])
-const searchText = ref('')
-const allSelected = ref(false)
-const sortMode = ref(false)
+const currentWorkshop        = ref(null)
+const studentsList           = ref([])
+const customSortOrder        = ref([])
+const attendanceMap          = ref({})
+const selectedForAttendance  = ref([])
+const searchText             = ref('')
+const allSelected            = ref(false)
+const sortMode               = ref(false)
 
-const timelineData = ref({})
+const timelineData       = ref({})
 const viewingTimelineStu = ref(null)
 
-// Grupos (Dossiers) State
-const grupos = ref([])
+const grupos     = ref([])
 const activeGrupo = ref(null)
 
 const allowedPlanteles = ["PREET", "PREEM", "PT", "PM", "ST", "SM", "ISM", "DM", "CM", "CT"]
 
-// --- Meal Menus Context ---
-const isMealService = computed(() => {
-  if (!currentWorkshop.value) return false;
-  return ['DESAYUNO', 'COMIDA', 'CENA'].includes(currentWorkshop.value.servicio.toUpperCase());
-});
+// ─── Meal Menus Context ───────────────────────────────────────────────────────
 
-const todayMenu = ref(null);
-const loadingMenu = ref(false);
+const isMealService = computed(() => {
+  if (!currentWorkshop.value) return false
+  return ['DESAYUNO', 'COMIDA', 'CENA'].includes(currentWorkshop.value.servicio.toUpperCase())
+})
+
+const todayMenu   = ref(null)
+const loadingMenu = ref(false)
 
 const fetchTodayMenu = async () => {
-  if (!isMealService.value || !currentWorkshop.value) return;
-  loadingMenu.value = true;
+  if (!isMealService.value || !currentWorkshop.value) return
+  loadingMenu.value = true
   try {
-    const todayStr = getLocalTodayStr();
-    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&plantel=${currentWorkshop.value.plantel}&t=${Date.now()}`);
+    const todayStr = getLocalTodayStr()
+    const res = await axios.get('https://matricula.casitaapps.com/api/meal-menus', {
+      params: { date: todayStr, plantel: currentWorkshop.value.plantel, t: Date.now() }
+    })
     if (res.data && res.data.length > 0) {
-      const found = res.data.find(m => m.meal_type && String(m.meal_type).trim().toUpperCase() === currentWorkshop.value.servicio.toUpperCase());
-      todayMenu.value = found || null;
+      const target = currentWorkshop.value.servicio.toUpperCase()
+      const found  = res.data.find(m => m.meal_type && String(m.meal_type).trim().toUpperCase() === target)
+      // Normalise meal_date so edit round-trips stay correct.
+      todayMenu.value = found ? { ...found, meal_date: normaliseDateStr(found.meal_date) } : null
     } else {
-      todayMenu.value = null;
+      todayMenu.value = null
     }
   } catch (e) {
-    logger.error('Failed to fetch today menu', e);
+    logger.error('Failed to fetch today menu', e)
+    todayMenu.value = null
   } finally {
-    loadingMenu.value = false;
+    loadingMenu.value = false
   }
 }
 
-// Inline Menu Editor State & Methods
-const showMenuEditor = ref(false);
-const menuTab = ref('library'); // 'library' | 'custom'
-const menuLibrary = ref([]);
-const searchMenuLibrary = ref('');
-const uploadingMenuImage = ref(false);
-const inlineFileInput = ref(null);
-const menuFormData = ref({
-  id: null,
-  meal_date: '',
-  meal_type: '',
-  title: '',
-  description: '',
-  image_url: '',
-  is_active: true,
-  selectedTemplateId: null
-});
+// ─── Inline Menu Editor ───────────────────────────────────────────────────────
+
+const showMenuEditor     = ref(false)
+const menuTab            = ref('library')
+const menuLibrary        = ref([])
+const searchMenuLibrary  = ref('')
+const uploadingMenuImage = ref(false)
+const inlineFileInput    = ref(null)
+const menuFormData       = ref({
+  id: null, meal_date: '', meal_type: '',
+  title: '', description: '', image_url: '',
+  is_active: true, selectedTemplateId: null
+})
 
 const filteredMenuLibrary = computed(() => {
-  if (!searchMenuLibrary.value) return menuLibrary.value;
-  const q = searchMenuLibrary.value.toLowerCase();
-  return menuLibrary.value.filter(t => (t.title || '').toLowerCase().includes(q));
-});
+  if (!searchMenuLibrary.value) return menuLibrary.value
+  const q = searchMenuLibrary.value.toLowerCase()
+  return menuLibrary.value.filter(t => (t.title || '').toLowerCase().includes(q))
+})
 
 const isMenuInlineReady = computed(() => {
-  if (menuTab.value === 'library') return !!menuFormData.value.selectedTemplateId;
-  return !!menuFormData.value.title;
-});
+  if (menuTab.value === 'library') return !!menuFormData.value.selectedTemplateId
+  return !!menuFormData.value.title
+})
 
 const openInlineMenuEditor = async (menu) => {
-  searchMenuLibrary.value = '';
-  menuTab.value = 'library';
+  searchMenuLibrary.value = ''
+  menuTab.value = 'library'
+
   if (menu) {
-    menuTab.value = 'custom';
-    menuFormData.value = { 
-        ...menu, 
-        meal_date: menu.meal_date ? String(menu.meal_date).split('T')[0] : getLocalTodayStr(),
-        is_active: !!menu.is_active, 
-        selectedTemplateId: null 
-    };
+    menuTab.value = 'custom'
+    menuFormData.value = {
+      ...menu,
+      // FIX: normalise so we never carry over a timezone-shifted ISO string.
+      meal_date:          normaliseDateStr(menu.meal_date) || getLocalTodayStr(),
+      meal_type:          String(menu.meal_type || '').trim().toUpperCase(),
+      is_active:          menu.is_active === 1 || menu.is_active === true,
+      selectedTemplateId: null
+    }
   } else {
     menuFormData.value = {
-      id: null,
-      meal_date: getLocalTodayStr(),
-      meal_type: currentWorkshop.value.servicio.toUpperCase(),
-      title: '',
-      description: '',
-      image_url: '',
-      is_active: true,
+      id:                 null,
+      meal_date:          getLocalTodayStr(),
+      meal_type:          currentWorkshop.value.servicio.toUpperCase(),
+      title:              '',
+      description:        '',
+      image_url:          '',
+      is_active:          true,
       selectedTemplateId: null
-    };
+    }
   }
-  
+
+  // Load library if not already loaded; pass plantel for correct filtering.
   if (menuLibrary.value.length === 0) {
     try {
-      const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?t=${Date.now()}`);
-      menuLibrary.value = res.data;
-    } catch(e) {}
+      const res = await axios.get('https://matricula.casitaapps.com/api/menu-library', {
+        params: { plantel: currentWorkshop.value.plantel, t: Date.now() }
+      })
+      menuLibrary.value = res.data || []
+    } catch (e) {
+      logger.error('Failed to load menu library in workshop', e)
+      // Non-fatal: user can still use the custom tab.
+    }
   }
 
-  showMenuEditor.value = true;
-};
+  showMenuEditor.value = true
+}
 
 const selectInlineTemplate = (tpl) => {
-  menuFormData.value.selectedTemplateId = tpl.id;
-  menuFormData.value.title = tpl.title || '';
-  menuFormData.value.description = tpl.description || '';
-  menuFormData.value.image_url = tpl.image_url || '';
-};
+  menuFormData.value.selectedTemplateId = tpl.id
+  menuFormData.value.title              = tpl.title       || ''
+  menuFormData.value.description        = tpl.description || ''
+  menuFormData.value.image_url          = tpl.image_url   || ''
+}
 
-const closeMenuEditor = () => { showMenuEditor.value = false; };
+const closeMenuEditor = () => { showMenuEditor.value = false }
 
 const triggerInlineFileInput = () => {
-  if (!uploadingMenuImage.value && inlineFileInput.value) inlineFileInput.value.click();
-};
+  if (!uploadingMenuImage.value && inlineFileInput.value) inlineFileInput.value.click()
+}
 
 const handleInlineFileSelect = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (!file.type.startsWith('image/')) return Swal.fire('Inválido', 'Solo imágenes.', 'warning');
-  
-  uploadingMenuImage.value = true;
+  const file = e.target.files[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) return Swal.fire('Inválido', 'Solo imágenes.', 'warning')
+
+  uploadingMenuImage.value = true
   try {
-    const form = new FormData();
-    form.append('image', file);
+    const form = new FormData()
+    form.append('image', file)
     const res = await axios.post('https://matricula.casitaapps.com/api/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    menuFormData.value.image_url = res.data.url;
+    })
+    menuFormData.value.image_url = res.data.url
   } catch (error) {
-    Swal.fire('Error', 'No se pudo subir la imagen.', 'error');
+    Swal.fire('Error', 'No se pudo subir la imagen.', 'error')
   } finally {
-    uploadingMenuImage.value = false;
-    if (inlineFileInput.value) inlineFileInput.value.value = '';
+    uploadingMenuImage.value = false
+    if (inlineFileInput.value) inlineFileInput.value.value = ''
   }
-};
+}
 
 const saveInlineMenu = async () => {
-  loading.value = true;
+  loading.value = true
   try {
-    let finalTitle = menuFormData.value.title || '';
-    let finalDesc = menuFormData.value.description || '';
-    let finalImg = menuFormData.value.image_url || '';
+    let finalTitle = menuFormData.value.title       || ''
+    let finalDesc  = menuFormData.value.description || ''
+    let finalImg   = menuFormData.value.image_url   || ''
 
     if (menuTab.value === 'library' && menuFormData.value.selectedTemplateId) {
-      const tpl = menuLibrary.value.find(t => String(t.id) === String(menuFormData.value.selectedTemplateId));
+      const tpl = menuLibrary.value.find(t => String(t.id) === String(menuFormData.value.selectedTemplateId))
       if (tpl) {
-        finalTitle = tpl.title;
-        finalDesc = tpl.description;
-        finalImg = tpl.image_url;
+        finalTitle = tpl.title       || finalTitle
+        finalDesc  = tpl.description || finalDesc
+        finalImg   = tpl.image_url   || finalImg
       }
     }
 
-    const mDate = menuFormData.value.meal_date ? String(menuFormData.value.meal_date).split('T')[0] : getLocalTodayStr();
-    const mType = String(menuFormData.value.meal_type || '').trim().toUpperCase();
+    // FIX: normalise the date to avoid off-by-one from MySQL2 serialisation.
+    const mDate = normaliseDateStr(menuFormData.value.meal_date) || getLocalTodayStr()
+    const mType = String(menuFormData.value.meal_type || '').trim().toUpperCase()
 
-    if (!finalTitle || !mType || !mDate) {
-       throw new Error("Título y fecha son requeridos");
+    if (!finalTitle)                     throw new Error('El título del platillo es obligatorio.')
+    if (!mType)                          throw new Error('El tipo de comida es obligatorio.')
+    if (!mDate)                          throw new Error('La fecha es obligatoria.')
+    if (!currentWorkshop.value?.plantel) throw new Error('No se pudo determinar el plantel.')
+
+    const payload = {
+      id:          menuFormData.value.id || null,
+      plantel:     currentWorkshop.value.plantel,
+      meal_date:   mDate,
+      meal_type:   mType,
+      title:       finalTitle,
+      description: finalDesc,
+      image_url:   finalImg,
+      is_active:   menuFormData.value.is_active ? 1 : 0
     }
 
-    const payload = { 
-      id: menuFormData.value.id || null,
-      plantel: currentWorkshop.value.plantel,
-      meal_date: mDate,
-      meal_type: mType, 
-      title: finalTitle,
-      description: finalDesc,
-      image_url: finalImg,
-      is_active: menuFormData.value.is_active ? 1 : 0 
-    };
-
-    console.log("Guardando menú inline:", payload);
+    console.log('[Workshop] Guardando menú inline:', payload)
 
     if (payload.id) {
-      await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${payload.id}`, payload);
+      await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${payload.id}`, payload)
     } else {
-      await axios.post('https://matricula.casitaapps.com/api/meal-menus', payload);
+      await axios.post('https://matricula.casitaapps.com/api/meal-menus', payload)
     }
-    
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Asignado', showConfirmButton: false, timer: 2000 });
-    closeMenuEditor();
-    await fetchTodayMenu();
+
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Asignado', showConfirmButton: false, timer: 2000 })
+    closeMenuEditor()
+    await fetchTodayMenu()
   } catch (e) {
-    console.error('Error al guardar menú en Workshop:', e);
-    let msg = 'Error interno';
-    if(e.response?.data?.error) msg = e.response.data.error;
-    else if(e.message) msg = e.message;
-    Swal.fire('Error', msg, 'error');
+    console.error('[Workshop] Error al guardar menú:', e)
+    let msg = 'Error interno'
+    if (e.response?.data?.error) msg = e.response.data.error
+    else if (e.message)          msg = e.message
+    Swal.fire('Error', msg, 'error')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
-// ------------------------------
+}
+
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
 
 onMounted(() => {
   const stored = localStorage.getItem('workshop_shortcuts')
   if (stored) savedShortcuts.value = JSON.parse(stored)
 })
 
+// ─── Auth / Device ID ─────────────────────────────────────────────────────────
+
 const getTeacherId = () => {
-  if (authStore.user?.email) return authStore.user.email;
-  let tid = localStorage.getItem('teacher_device_id');
+  if (authStore.user?.email) return authStore.user.email
+  let tid = localStorage.getItem('teacher_device_id')
   if (!tid) {
-    tid = 'tid_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('teacher_device_id', tid);
-    document.cookie = `teacher_device_id=${tid};path=/;max-age=31536000`;
+    tid = 'tid_' + Math.random().toString(36).substr(2, 9)
+    localStorage.setItem('teacher_device_id', tid)
+    document.cookie = `teacher_device_id=${tid};path=/;max-age=31536000`
   }
-  return tid;
+  return tid
 }
 
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
 const timeAgo = (dateStr) => {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if(isNaN(d.getTime())) return null;
-  const now = new Date();
-  const diffMs = now - d;
-  if (diffMs < 0) return 'Hoy';
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays <= 0) return 'Hoy';
-  if (diffDays === 1) return 'Ayer';
-  if (diffDays < 7) return `Hace ${diffDays} días`;
-  if (diffDays < 30) return `Hace ${Math.floor(diffDays/7)} sem`;
-  if (diffDays < 365) return `Hace ${Math.floor(diffDays/30)} meses`;
-  return `Hace ${Math.floor(diffDays/365)} años`;
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return null
+  const diffMs   = new Date() - d
+  if (diffMs < 0) return 'Hoy'
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays <= 0) return 'Hoy'
+  if (diffDays === 1) return 'Ayer'
+  if (diffDays < 7)   return `Hace ${diffDays} días`
+  if (diffDays < 30)  return `Hace ${Math.floor(diffDays / 7)} sem`
+  if (diffDays < 365) return `Hace ${Math.floor(diffDays / 30)} meses`
+  return `Hace ${Math.floor(diffDays / 365)} años`
 }
 
 const isNewStudent = (dateStr) => {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  if(isNaN(d.getTime())) return false;
-  const diffDays = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
-  return diffDays >= 0 && diffDays <= 14; 
+  if (!dateStr) return false
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return false
+  const diffDays = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24))
+  return diffDays >= 0 && diffDays <= 14
 }
 
 const formatDateObj = (dateStr) => {
-   if(!dateStr) return '...';
-   const d = new Date(dateStr);
-   if(isNaN(d.getTime())) return dateStr;
-   return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
+  if (!dateStr) return '...'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  return d.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-const openTimelineModal = (stu) => { viewingTimelineStu.value = stu; }
-const closeTimelineModal = () => { viewingTimelineStu.value = null; }
+const openTimelineModal  = (stu) => { viewingTimelineStu.value = stu }
+const closeTimelineModal = ()    => { viewingTimelineStu.value = null }
+
+// ─── Shortcut Management ─────────────────────────────────────────────────────
 
 const fetchServicesForAdd = async () => {
-  if (!newShortcutPlantel.value) {
-    availableServicesForAdd.value = []
-    return
-  }
+  if (!newShortcutPlantel.value) { availableServicesForAdd.value = []; return }
   fetchingServices.value = true
   try {
     const res = await axios.get(`https://matricula.casitaapps.com/fetch-servicios-data?plantel=${newShortcutPlantel.value}`)
@@ -783,9 +812,9 @@ const saveNewShortcut = () => {
 }
 
 const closeAddModal = () => {
-  showAddModal.value = false
-  newShortcutPlantel.value = null
-  newShortcutServicio.value = null
+  showAddModal.value          = false
+  newShortcutPlantel.value    = null
+  newShortcutServicio.value   = null
   availableServicesForAdd.value = []
 }
 
@@ -794,166 +823,170 @@ const removeShortcut = (idx) => {
   localStorage.setItem('workshop_shortcuts', JSON.stringify(savedShortcuts.value))
 }
 
-const getCacheKey = () => `ws_cache_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
-const getSortKey = () => `ws_sort_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
+// ─── Cache / Sort Key Helpers ─────────────────────────────────────────────────
+
+const getCacheKey  = () => `ws_cache_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
+const getSortKey   = () => `ws_sort_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
 const getGruposKey = () => `ws_grupos_${getTeacherId()}_${currentWorkshop.value.plantel}_${currentWorkshop.value.servicio}`
 
 const applySortOrder = (list) => {
-  if (customSortOrder.value.length === 0) return list;
+  if (customSortOrder.value.length === 0) return list
   return [...list].sort((a, b) => {
-    const idxA = customSortOrder.value.indexOf(a.matricula);
-    const idxB = customSortOrder.value.indexOf(b.matricula);
-    if (idxA === -1 && idxB === -1) return a.nombreCompleto.localeCompare(b.nombreCompleto);
-    if (idxA === -1) return 1;
-    if (idxB === -1) return -1;
-    return idxA - idxB;
-  });
+    const idxA = customSortOrder.value.indexOf(a.matricula)
+    const idxB = customSortOrder.value.indexOf(b.matricula)
+    if (idxA === -1 && idxB === -1) return a.nombreCompleto.localeCompare(b.nombreCompleto)
+    if (idxA === -1) return 1
+    if (idxB === -1) return -1
+    return idxA - idxB
+  })
 }
 
-const loadGrupos = async () => {
-   if (!currentWorkshop.value) return;
-   const key = getGruposKey();
-   
-   const local = localStorage.getItem(key);
-   if (local) grupos.value = JSON.parse(local);
-   else grupos.value = [];
+// ─── Grupos (Dossiers) ────────────────────────────────────────────────────────
 
-   try {
-     const res = await axios.get(`https://bot.casitaapps.com/api/talleres/dossiers`, {
-       params: { teacher_id: getTeacherId(), plantel: currentWorkshop.value.plantel, servicio: currentWorkshop.value.servicio }
-     });
-     if (res.data && res.data.dossiers) {
-       grupos.value = res.data.dossiers;
-       localStorage.setItem(key, JSON.stringify(grupos.value));
-     }
-   } catch(e) {
-     logger.warn('Grupos remotos no disponibles', e);
-   }
+const loadGrupos = async () => {
+  if (!currentWorkshop.value) return
+  const key   = getGruposKey()
+  const local = localStorage.getItem(key)
+  grupos.value = local ? JSON.parse(local) : []
+
+  try {
+    const res = await axios.get('https://bot.casitaapps.com/api/talleres/dossiers', {
+      params: { teacher_id: getTeacherId(), plantel: currentWorkshop.value.plantel, servicio: currentWorkshop.value.servicio }
+    })
+    if (res.data && res.data.dossiers) {
+      grupos.value = res.data.dossiers
+      localStorage.setItem(key, JSON.stringify(grupos.value))
+    }
+  } catch (e) {
+    logger.warn('Grupos remotos no disponibles', e)
+  }
 }
 
 const saveGruposRemote = async () => {
-   const key = getGruposKey();
-   localStorage.setItem(key, JSON.stringify(grupos.value));
-   try {
-     await axios.post(`https://bot.casitaapps.com/api/talleres/dossiers`, {
-       teacher_id: getTeacherId(),
-       plantel: currentWorkshop.value.plantel,
-       servicio: currentWorkshop.value.servicio,
-       dossiers: grupos.value
-     });
-   } catch(e) {
-     logger.warn('Fallo sync de grupos', e);
-   }
+  const key = getGruposKey()
+  localStorage.setItem(key, JSON.stringify(grupos.value))
+  try {
+    await axios.post('https://bot.casitaapps.com/api/talleres/dossiers', {
+      teacher_id: getTeacherId(),
+      plantel:    currentWorkshop.value.plantel,
+      servicio:   currentWorkshop.value.servicio,
+      dossiers:   grupos.value
+    })
+  } catch (e) {
+    logger.warn('Fallo sync de grupos', e)
+  }
 }
 
 const promptCreateGrupo = async (fromModal = false) => {
-   if (fromModal) showGroupSelectModal.value = false;
+  if (fromModal) showGroupSelectModal.value = false
 
-   const { value: name } = await Swal.fire({
-     title: 'Crear Nuevo Grupo',
-     input: 'text',
-     inputPlaceholder: 'Ej: Avanzados, Lunes/Miércoles, Equipo A',
-     showCancelButton: true,
-     confirmButtonText: 'Crear',
-     cancelButtonText: 'Cancelar'
-   });
-   
-   if (name) {
-     const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6'];
-     const newGrupo = {
-       id: 'grp_' + Date.now(),
-       name,
-       color: palette[grupos.value.length % palette.length],
-       students: [...selectedForAttendance.value] 
-     };
-     grupos.value.push(newGrupo);
-     saveGruposRemote();
-     selectedForAttendance.value = [];
-     allSelected.value = false;
-     Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Grupo creado exitosamente', showConfirmButton: false, timer: 2000});
-   } else if (fromModal) {
-     showGroupSelectModal.value = true;
-   }
+  const { value: name } = await Swal.fire({
+    title: 'Crear Nuevo Grupo',
+    input: 'text',
+    inputPlaceholder: 'Ej: Avanzados, Lunes/Miércoles, Equipo A',
+    showCancelButton: true,
+    confirmButtonText: 'Crear',
+    cancelButtonText: 'Cancelar'
+  })
+
+  if (name) {
+    const palette  = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6']
+    const newGrupo = {
+      id:       'grp_' + Date.now(),
+      name,
+      color:    palette[grupos.value.length % palette.length],
+      students: [...selectedForAttendance.value]
+    }
+    grupos.value.push(newGrupo)
+    saveGruposRemote()
+    selectedForAttendance.value = []
+    allSelected.value = false
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Grupo creado exitosamente', showConfirmButton: false, timer: 2000 })
+  } else if (fromModal) {
+    showGroupSelectModal.value = true
+  }
 }
 
 const assignToGrupo = (grupoId) => {
-   const grp = grupos.value.find(g => g.id === grupoId);
-   if (!grp) return;
-   
-   let added = 0;
-   selectedForAttendance.value.forEach(mat => {
-     if (!grp.students.includes(mat)) {
-       grp.students.push(mat);
-       added++;
-     }
-   });
-   
-   showGroupSelectModal.value = false;
+  const grp = grupos.value.find(g => g.id === grupoId)
+  if (!grp) return
 
-   if (added > 0) {
-     saveGruposRemote();
-     selectedForAttendance.value = [];
-     allSelected.value = false;
-     Swal.fire({toast: true, position: 'top-end', icon: 'success', title: `Añadidos a "${grp.name}"`, showConfirmButton: false, timer: 2000});
-   } else {
-     selectedForAttendance.value = [];
-     Swal.fire({toast: true, position: 'top-end', icon: 'info', title: 'Ya estaban en el grupo', showConfirmButton: false, timer: 2000});
-   }
+  let added = 0
+  selectedForAttendance.value.forEach(mat => {
+    if (!grp.students.includes(mat)) { grp.students.push(mat); added++ }
+  })
+
+  showGroupSelectModal.value = false
+
+  if (added > 0) {
+    saveGruposRemote()
+    selectedForAttendance.value = []
+    allSelected.value = false
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Añadidos a "${grp.name}"`, showConfirmButton: false, timer: 2000 })
+  } else {
+    selectedForAttendance.value = []
+    Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Ya estaban en el grupo', showConfirmButton: false, timer: 2000 })
+  }
 }
 
 const removeFromGrupo = () => {
-   if (!activeGrupo.value) return;
-   const grp = grupos.value.find(g => g.id === activeGrupo.value);
-   if (grp) {
-     grp.students = grp.students.filter(mat => !selectedForAttendance.value.includes(mat));
-     saveGruposRemote();
-     selectedForAttendance.value = [];
-     allSelected.value = false;
-     Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Quitados del grupo', showConfirmButton: false, timer: 2000});
-   }
+  if (!activeGrupo.value) return
+  const grp = grupos.value.find(g => g.id === activeGrupo.value)
+  if (grp) {
+    grp.students = grp.students.filter(mat => !selectedForAttendance.value.includes(mat))
+    saveGruposRemote()
+    selectedForAttendance.value = []
+    allSelected.value = false
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Quitados del grupo', showConfirmButton: false, timer: 2000 })
+  }
 }
 
 const removeGrupo = async (grupoId) => {
-   const conf = await Swal.fire({ title: '¿Eliminar Grupo?', text: 'Los alumnos no se borrarán del taller general.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, eliminar', confirmButtonColor: '#ef4444' });
-   if (!conf.isConfirmed) return;
-
-   grupos.value = grupos.value.filter(g => g.id !== grupoId);
-   if (activeGrupo.value === grupoId) activeGrupo.value = null;
-   saveGruposRemote();
+  const conf = await Swal.fire({
+    title: '¿Eliminar Grupo?', text: 'Los alumnos no se borrarán del taller general.',
+    icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, eliminar', confirmButtonColor: '#ef4444'
+  })
+  if (!conf.isConfirmed) return
+  grupos.value = grupos.value.filter(g => g.id !== grupoId)
+  if (activeGrupo.value === grupoId) activeGrupo.value = null
+  saveGruposRemote()
 }
 
 const getStudentGrupos = (matricula) => {
-   return grupos.value.filter(g => g.students.includes(matricula)).map(g => g.color);
+  return grupos.value.filter(g => g.students.includes(matricula)).map(g => g.color)
 }
 
+// ─── Workshop Open / Close ────────────────────────────────────────────────────
+
 const openWorkshop = async (shortcut) => {
-  currentWorkshop.value = shortcut
-  searchText.value = ''
+  currentWorkshop.value       = shortcut
+  searchText.value            = ''
   selectedForAttendance.value = []
-  allSelected.value = false
-  sortMode.value = false
-  timelineData.value = {}
-  activeGrupo.value = null
-  showGroupSelectModal.value = false
-  todayMenu.value = null
-  
+  allSelected.value           = false
+  sortMode.value              = false
+  timelineData.value          = {}
+  activeGrupo.value           = null
+  showGroupSelectModal.value  = false
+  todayMenu.value             = null
+  menuLibrary.value           = []   // reset so it reloads with correct plantel
+
   const savedSort = localStorage.getItem(getSortKey())
   customSortOrder.value = savedSort ? JSON.parse(savedSort) : []
 
-  loadGrupos();
+  loadGrupos()
 
   const cachedData = localStorage.getItem(getCacheKey())
   if (cachedData) {
     studentsList.value = applySortOrder(JSON.parse(cachedData))
     syncing.value = true
-    await fetchAttendance() 
-    fetchTimeline() 
+    await fetchAttendance()
+    fetchTimeline()
   } else {
-    loading.value = true 
+    loading.value = true
   }
 
-  await fetchWorkshopData();
-  if (isMealService.value) fetchTodayMenu();
+  await fetchWorkshopData()
+  if (isMealService.value) fetchTodayMenu()
 }
 
 const manualRefresh = async () => {
@@ -961,26 +994,26 @@ const manualRefresh = async () => {
   await fetchWorkshopData()
   await fetchAttendance()
   await fetchTimeline()
-  if (isMealService.value) fetchTodayMenu();
+  if (isMealService.value) fetchTodayMenu()
   loading.value = false
 }
 
 const fetchWorkshopData = async () => {
-  if(!currentWorkshop.value) return;
-  if (!syncing.value) loading.value = true;
-  
+  if (!currentWorkshop.value) return
+  if (!syncing.value) loading.value = true
+
   try {
     const res = await axios.get(`https://matricula.casitaapps.com/fetch-servicios-data?plantel=${currentWorkshop.value.plantel}`)
     if (res.data && res.data[currentWorkshop.value.plantel] && res.data[currentWorkshop.value.plantel][currentWorkshop.value.servicio]) {
       const freshList = res.data[currentWorkshop.value.plantel][currentWorkshop.value.servicio]
       localStorage.setItem(getCacheKey(), JSON.stringify(freshList))
       studentsList.value = applySortOrder(freshList)
-      
-      if(customSortOrder.value.length === 0 && freshList.length > 0) {
+
+      if (customSortOrder.value.length === 0 && freshList.length > 0) {
         customSortOrder.value = freshList.map(s => s.matricula)
         localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
       }
-      
+
       fetchTimeline()
     } else {
       studentsList.value = []
@@ -995,40 +1028,47 @@ const fetchWorkshopData = async () => {
 }
 
 const fetchTimeline = async () => {
-  if (!currentWorkshop.value || studentsList.value.length === 0) return;
-  const matriculas = studentsList.value.map(s => s.matricula);
+  if (!currentWorkshop.value || studentsList.value.length === 0) return
+  const matriculas = studentsList.value.map(s => s.matricula)
   try {
     const res = await axios.post('https://bot.casitaapps.com/api/talleres/timeline/bulk', {
-      plantel: currentWorkshop.value.plantel,
-      servicio: currentWorkshop.value.servicio,
+      plantel:   currentWorkshop.value.plantel,
+      servicio:  currentWorkshop.value.servicio,
       matriculas
-    });
-    timelineData.value = res.data?.data || {};
-  } catch(e) {}
+    })
+    timelineData.value = res.data?.data || {}
+  } catch (e) {
+    logger.warn('Timeline fetch failed', e)
+  }
 }
 
 const closeWorkshop = () => {
-  currentWorkshop.value = null
-  studentsList.value = []
-  attendanceMap.value = {}
+  currentWorkshop.value       = null
+  studentsList.value          = []
+  attendanceMap.value         = {}
   selectedForAttendance.value = []
-  sortMode.value = false
-  activeGrupo.value = null
-  todayMenu.value = null
+  sortMode.value              = false
+  activeGrupo.value           = null
+  todayMenu.value             = null
+  menuLibrary.value           = []
 }
 
+// ─── Students Computed ────────────────────────────────────────────────────────
+
 const filteredStudents = computed(() => {
-  const q = searchText.value.toLowerCase()
-  let list = studentsList.value
+  const q    = searchText.value.toLowerCase()
+  let   list = studentsList.value
 
   if (activeGrupo.value) {
-    const grp = grupos.value.find(g => g.id === activeGrupo.value);
-    if (grp) list = list.filter(s => grp.students.includes(s.matricula));
+    const grp = grupos.value.find(g => g.id === activeGrupo.value)
+    if (grp) list = list.filter(s => grp.students.includes(s.matricula))
   }
 
   if (q) list = list.filter(s => s.nombreCompleto.toLowerCase().includes(q) || s.matricula.toLowerCase().includes(q))
   return applySortOrder(list)
 })
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
 
 const fetchAttendance = async () => {
   if (studentsList.value.length === 0) return
@@ -1036,7 +1076,9 @@ const fetchAttendance = async () => {
   try {
     const res = await axios.post('https://bot.casitaapps.com/get-monthly-attendance-bulk', { students: payload })
     attendanceMap.value = res.data.attendanceData || {}
-  } catch (e) { logger.error("Attendance fetch error", e) }
+  } catch (e) {
+    logger.error('Attendance fetch error', e)
+  }
 }
 
 const hasAttendedToday = (matricula) => {
@@ -1047,14 +1089,14 @@ const hasAttendedToday = (matricula) => {
 }
 
 const clearSelection = () => {
-  selectedForAttendance.value = [];
-  allSelected.value = false;
+  selectedForAttendance.value = []
+  allSelected.value           = false
 }
 
 const toggleAttendanceSelection = (matricula) => {
   const idx = selectedForAttendance.value.indexOf(matricula)
   if (idx > -1) selectedForAttendance.value.splice(idx, 1)
-  else selectedForAttendance.value.push(matricula)
+  else          selectedForAttendance.value.push(matricula)
   allSelected.value = filteredStudents.value.length > 0 && selectedForAttendance.value.length === filteredStudents.value.length
 }
 
@@ -1070,15 +1112,18 @@ const toggleSelectAll = () => {
 const recordSelectedAttendance = async () => {
   loading.value = true
   try {
-    await axios.post('https://bot.casitaapps.com/record-attendance-bulk', { matriculas: selectedForAttendance.value, servicio: currentWorkshop.value.servicio })
-    
+    await axios.post('https://bot.casitaapps.com/record-attendance-bulk', {
+      matriculas: selectedForAttendance.value,
+      servicio:   currentWorkshop.value.servicio
+    })
+
     if (isMealService.value) {
-      await triggerParentNotifications(selectedForAttendance.value);
+      await triggerParentNotifications(selectedForAttendance.value)
     } else {
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asistencia Guardada', showConfirmButton: false, timer: 2000 })
     }
 
-    clearSelection();
+    clearSelection()
     await fetchAttendance()
   } catch (e) {
     Swal.fire('Error', 'No se guardó asistencia', 'error')
@@ -1088,70 +1133,73 @@ const recordSelectedAttendance = async () => {
 }
 
 const triggerParentNotifications = async (matriculasIds) => {
-    const studentsToNotify = matriculasIds.map(m => {
-        const s = studentsList.value.find(x => x.matricula === m);
-        return { matricula: m, nombreCompleto: s ? s.nombreCompleto : m };
-    });
+  const studentsToNotify = matriculasIds.map(m => {
+    const s = studentsList.value.find(x => x.matricula === m)
+    return { matricula: m, nombreCompleto: s ? s.nombreCompleto : m }
+  })
 
-    try {
-        const res = await axios.post('https://matricula.casitaapps.com/api/meal-menus/notify-parents', {
-            students: studentsToNotify,
-            servicio: currentWorkshop.value.servicio,
-            plantel: currentWorkshop.value.plantel,
-            date: getLocalTodayStr()
-        });
-        
-        if(res.data.sentCount > 0) {
-            Swal.fire('Asistencia y Notificación', `Se guardó asistencia y se enviaron ${res.data.sentCount} correos.`, 'success');
-        } else {
-            Swal.fire('Asistencia Guardada', `Asistencia registrada. (${res.data.message})`, 'success');
-        }
-    } catch (e) {
-        logger.error('Failed to notify parents', e);
-        Swal.fire({
-            title: 'Notificaciones Fallidas',
-            text: 'La asistencia se guardó correctamente, pero el envío de correos falló. Puedes reintentar enviar los correos.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Reintentar',
-            cancelButtonText: 'No enviar'
-        }).then(result => {
-            if (result.isConfirmed) {
-                loading.value = true;
-                triggerParentNotifications(matriculasIds).finally(() => loading.value = false);
-            }
-        });
+  try {
+    const res = await axios.post('https://matricula.casitaapps.com/api/meal-menus/notify-parents', {
+      students: studentsToNotify,
+      servicio: currentWorkshop.value.servicio,
+      plantel:  currentWorkshop.value.plantel,
+      date:     getLocalTodayStr()
+    })
+
+    if (res.data.sentCount > 0) {
+      Swal.fire('Asistencia y Notificación', `Se guardó asistencia y se enviaron ${res.data.sentCount} correos.`, 'success')
+    } else {
+      Swal.fire('Asistencia Guardada', `Asistencia registrada. (${res.data.message})`, 'success')
     }
+  } catch (e) {
+    logger.error('Failed to notify parents', e)
+    Swal.fire({
+      title: 'Notificaciones Fallidas',
+      text: 'La asistencia se guardó correctamente, pero el envío de correos falló. Puedes reintentar enviar los correos.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Reintentar',
+      cancelButtonText: 'No enviar'
+    }).then(result => {
+      if (result.isConfirmed) {
+        loading.value = true
+        triggerParentNotifications(matriculasIds).finally(() => { loading.value = false })
+      }
+    })
+  }
 }
 
+// ─── Sort Mode ────────────────────────────────────────────────────────────────
+
 const toggleSortMode = () => {
-  sortMode.value = !sortMode.value
-  searchText.value = '' 
+  sortMode.value   = !sortMode.value
+  searchText.value = ''
 }
 
 const moveStudent = (index, direction) => {
   const targetIndex = index + direction
   if (targetIndex < 0 || targetIndex >= filteredStudents.value.length) return
 
-  const stuA = filteredStudents.value[index].matricula;
-  const stuB = filteredStudents.value[targetIndex].matricula;
-  
-  if(customSortOrder.value.length === 0) {
+  const stuA = filteredStudents.value[index].matricula
+  const stuB = filteredStudents.value[targetIndex].matricula
+
+  if (customSortOrder.value.length === 0) {
     customSortOrder.value = studentsList.value.map(s => s.matricula)
   }
-  
-  const idxA = customSortOrder.value.indexOf(stuA);
-  const idxB = customSortOrder.value.indexOf(stuB);
-  
-  if(idxA !== -1 && idxB !== -1) {
+
+  const idxA = customSortOrder.value.indexOf(stuA)
+  const idxB = customSortOrder.value.indexOf(stuB)
+
+  if (idxA !== -1 && idxB !== -1) {
     const temp = customSortOrder.value[idxA]
     customSortOrder.value[idxA] = customSortOrder.value[idxB]
     customSortOrder.value[idxB] = temp
-    
     localStorage.setItem(getSortKey(), JSON.stringify(customSortOrder.value))
-    studentsList.value = [...studentsList.value] 
+    studentsList.value = [...studentsList.value]
   }
 }
+
+// ─── Incidencias ─────────────────────────────────────────────────────────────
 
 const openIncidenciaModal = async (stu) => {
   const { value: formValues } = await Swal.fire({
@@ -1164,12 +1212,15 @@ const openIncidenciaModal = async (stu) => {
         <textarea id="swal-acciones" class="form-control bg-light rounded-4 p-3 border-0" rows="3" placeholder="¿Qué se hizo al respecto? (min 10 caracteres)..."></textarea>
       </div>
     `,
-    focusConfirm: false, showCancelButton: true, confirmButtonText: 'Guardar Reporte', cancelButtonText: 'Cancelar',
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Guardar Reporte',
+    cancelButtonText: 'Cancelar',
     confirmButtonColor: '#eab308',
     preConfirm: () => {
-      const motivo = document.getElementById('swal-motivo').value
+      const motivo   = document.getElementById('swal-motivo').value
       const acciones = document.getElementById('swal-acciones').value
-      if(motivo.length < 10 || acciones.length < 10) {
+      if (motivo.length < 10 || acciones.length < 10) {
         Swal.showValidationMessage('Ambos campos requieren al menos 10 caracteres.')
         return false
       }
@@ -1181,16 +1232,16 @@ const openIncidenciaModal = async (stu) => {
     loading.value = true
     try {
       await axios.post('https://bot.casitaapps.com/api/servicios-atencion', {
-        matricula: stu.matricula, 
-        nombre_alumno: stu.nombreCompleto, 
-        servicios: currentWorkshop.value.servicio,
-        motivo: formValues.motivo, 
-        acciones: formValues.acciones, 
-        plantel: currentWorkshop.value.plantel, 
-        area: 'Artes y Deportes'
+        matricula:     stu.matricula,
+        nombre_alumno: stu.nombreCompleto,
+        servicios:     currentWorkshop.value.servicio,
+        motivo:        formValues.motivo,
+        acciones:      formValues.acciones,
+        plantel:       currentWorkshop.value.plantel,
+        area:          'Artes y Deportes'
       })
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Incidencia guardada', showConfirmButton: false, timer: 3000 })
-    } catch(e) {
+    } catch (e) {
       Swal.fire('Error', 'Fallo al guardar reporte. Revisa la conexión.', 'error')
     } finally {
       loading.value = false
@@ -1214,8 +1265,8 @@ const openIncidenciaModal = async (stu) => {
 
 .pulse-animation { animation: pulse 2s infinite; }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70%  { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
   100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
 }
 
@@ -1235,7 +1286,7 @@ const openIncidenciaModal = async (stu) => {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .transition-all { transition: all 0.3s ease; }
 
-.z-top { z-index: 1060 !important; }
+.z-top      { z-index: 1060 !important; }
 .z-modal-bg { z-index: 1040 !important; }
-.z-modal { z-index: 1050 !important; }
+.z-modal    { z-index: 1050 !important; }
 </style>

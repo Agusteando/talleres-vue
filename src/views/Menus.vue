@@ -309,11 +309,39 @@ import axios from 'axios'
 import Swal from 'sweetalert2'
 import { logger } from '../utils/logger'
 
-// Generador de fecha local para evitar timezone leaps (YYYY-MM-DD)
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns today as a plain YYYY-MM-DD string using LOCAL timezone.
+ * Avoids the UTC-offset off-by-one that `new Date().toISOString()` can cause
+ * for Mexican timezones (UTC-6 / UTC-5).
+ */
 const getLocalTodayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Normalises any date value coming from the API into a plain YYYY-MM-DD string.
+ * MySQL2 may serialise DATE columns as JavaScript Date objects (or ISO strings)
+ * which then get shifted by the server timezone when JSON-stringified.
+ * We always parse them in LOCAL time here so the value matches what we stored.
+ */
+const normaliseDateStr = (raw) => {
+  if (!raw) return ''
+  const s = String(raw)
+  // If it already looks like YYYY-MM-DD don't touch it.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  // Trim the time component if present (e.g. "2024-01-15T06:00:00.000Z")
+  const isoDate = s.split('T')[0]
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate
+  // Fallback: parse as a JS Date but use LOCAL parts to avoid UTC shift.
+  const d = new Date(raw)
+  if (isNaN(d.getTime())) return s
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// ─── State ──────────────────────────────────────────────────────────────────
 
 const loading = ref(false)
 const activeTab = ref('schedule')
@@ -332,7 +360,16 @@ const searchLibrary = ref('')
 // Modal States
 const showAssignModal = ref(false)
 const assignTab = ref('library') // 'library' | 'custom'
-const assignData = ref({ id: null, meal_date: '', meal_type: '', title: '', description: '', image_url: '', is_active: true, selectedTemplateId: null })
+const assignData = ref({
+  id: null,
+  meal_date: '',
+  meal_type: '',
+  title: '',
+  description: '',
+  image_url: '',
+  is_active: true,
+  selectedTemplateId: null
+})
 const searchPicker = ref('')
 
 const showLibraryModal = ref(false)
@@ -340,8 +377,10 @@ const libraryData = ref({ id: null, title: '', description: '', image_url: '' })
 
 const uploadingImage = ref(false)
 
+// ─── Lifecycle ──────────────────────────────────────────────────────────────
+
 onMounted(() => {
-  // Esperar selección de plantel
+  // Wait for plantel selection before loading data
 })
 
 const onPlantelChange = () => {
@@ -354,15 +393,24 @@ const onPlantelChange = () => {
   }
 }
 
-// --- DATA FETCHING ---
+// ─── Data Fetching ───────────────────────────────────────────────────────────
+
 const loadDailySchedule = async () => {
   if (!selectedPlantel.value) return
   loading.value = true
   try {
-    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${selectedDate.value}&plantel=${selectedPlantel.value}&t=${Date.now()}`)
-    dailyMenus.value = res.data
+    const res = await axios.get(
+      `https://matricula.casitaapps.com/api/meal-menus`,
+      { params: { date: selectedDate.value, plantel: selectedPlantel.value, t: Date.now() } }
+    )
+    // Normalise meal_date on every row so date comparisons are safe.
+    dailyMenus.value = (res.data || []).map(m => ({
+      ...m,
+      meal_date: normaliseDateStr(m.meal_date)
+    }))
   } catch (e) {
     logger.error('Error fetching daily menus', e)
+    Swal.fire('Error', 'No se pudieron cargar los menús del día.', 'error')
   } finally {
     loading.value = false
   }
@@ -371,19 +419,24 @@ const loadDailySchedule = async () => {
 const loadLibrary = async () => {
   if (!selectedPlantel.value) return
   try {
-    const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?t=${Date.now()}`)
-    library.value = res.data
+    // FIX: always pass plantel so the API can filter correctly.
+    const res = await axios.get(
+      `https://matricula.casitaapps.com/api/menu-library`,
+      { params: { plantel: selectedPlantel.value, t: Date.now() } }
+    )
+    library.value = res.data || []
   } catch (e) {
     logger.error('Error fetching library', e)
   }
 }
 
-// --- COMPUTED ---
+// ─── Computed ────────────────────────────────────────────────────────────────
+
 const scheduleMap = computed(() => {
   const map = {}
   dailyMenus.value.forEach(m => {
     if (m && m.meal_type) {
-      map[String(m.meal_type).trim().toUpperCase()] = m 
+      map[String(m.meal_type).trim().toUpperCase()] = m
     }
   })
   return map
@@ -406,35 +459,43 @@ const isAssignReady = computed(() => {
   return !!assignData.value.title
 })
 
-// --- ACTIONS: SCHEDULE ---
+// ─── Actions: Schedule ───────────────────────────────────────────────────────
+
 const changeDate = (days) => {
   const d = new Date(selectedDate.value + 'T12:00:00')
   d.setDate(d.getDate() + days)
-  selectedDate.value = d.toISOString().split('T')[0]
+  selectedDate.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   loadDailySchedule()
 }
 
 const openAssignModal = (mealType, existingMenu) => {
   searchPicker.value = ''
   assignTab.value = 'library'
+
   if (existingMenu) {
+    // Editing an existing daily entry — switch to custom tab.
     assignTab.value = 'custom'
-    assignData.value = { 
-        ...existingMenu, 
-        meal_date: existingMenu.meal_date ? String(existingMenu.meal_date).split('T')[0] : selectedDate.value,
-        selectedTemplateId: null, 
-        is_active: !!existingMenu.is_active 
+    assignData.value = {
+      ...existingMenu,
+      // FIX: normalise the date so it's always YYYY-MM-DD regardless of how
+      // MySQL2 serialised the DATE column.
+      meal_date: normaliseDateStr(existingMenu.meal_date) || selectedDate.value,
+      // Keep meal_type from the record but always normalise it.
+      meal_type: String(existingMenu.meal_type || mealType).trim().toUpperCase(),
+      selectedTemplateId: null,
+      is_active: existingMenu.is_active === 1 || existingMenu.is_active === true
     }
   } else {
-    assignData.value = { 
-      id: null, 
-      meal_date: selectedDate.value, 
-      meal_type: String(mealType).trim().toUpperCase(), 
-      title: '', 
-      description: '', 
-      image_url: '', 
-      is_active: true, 
-      selectedTemplateId: null 
+    // New assignment
+    assignData.value = {
+      id: null,
+      meal_date: selectedDate.value,
+      meal_type: String(mealType).trim().toUpperCase(),
+      title: '',
+      description: '',
+      image_url: '',
+      is_active: true,
+      selectedTemplateId: null
     }
   }
   showAssignModal.value = true
@@ -450,55 +511,58 @@ const selectTemplateForAssignment = (tpl) => {
 const saveDailyAssignment = async () => {
   loading.value = true
   try {
-    let finalTitle = assignData.value.title || '';
-    let finalDesc = assignData.value.description || '';
-    let finalImg = assignData.value.image_url || '';
+    let finalTitle = assignData.value.title || ''
+    let finalDesc  = assignData.value.description || ''
+    let finalImg   = assignData.value.image_url || ''
 
-    // Si seleccionó desde la librería, extraemos forzosamente los valores para evitar envíos vacíos.
+    // When picking from library, prefer the stored template data as ground truth.
     if (assignTab.value === 'library' && assignData.value.selectedTemplateId) {
       const tpl = library.value.find(t => String(t.id) === String(assignData.value.selectedTemplateId))
       if (tpl) {
-        finalTitle = tpl.title;
-        finalDesc = tpl.description;
-        finalImg = tpl.image_url;
+        finalTitle = tpl.title   || finalTitle
+        finalDesc  = tpl.description || finalDesc
+        finalImg   = tpl.image_url   || finalImg
       }
     }
 
-    const mDate = assignData.value.meal_date ? String(assignData.value.meal_date).split('T')[0] : selectedDate.value;
-    const mType = String(assignData.value.meal_type || '').trim().toUpperCase();
+    // FIX: always use normaliseDateStr so we send a clean YYYY-MM-DD regardless
+    // of what MySQL2 returned when we loaded the existing record.
+    const mDate = normaliseDateStr(assignData.value.meal_date) || selectedDate.value
+    const mType = String(assignData.value.meal_type || '').trim().toUpperCase()
 
-    if (!finalTitle || !mType || !mDate) {
-       throw new Error("El título, la fecha y el tipo de comida son obligatorios.");
-    }
+    if (!finalTitle) throw new Error('El título del platillo es obligatorio.')
+    if (!mType)      throw new Error('El tipo de comida es obligatorio.')
+    if (!mDate)      throw new Error('La fecha es obligatoria.')
+    if (!selectedPlantel.value) throw new Error('Selecciona un plantel primero.')
 
     const payload = {
-      id: assignData.value.id || null,
-      plantel: selectedPlantel.value,
-      meal_date: mDate,
-      meal_type: mType,
-      title: finalTitle,
+      id:          assignData.value.id || null,
+      plantel:     selectedPlantel.value,
+      meal_date:   mDate,
+      meal_type:   mType,
+      title:       finalTitle,
       description: finalDesc,
-      image_url: finalImg,
-      is_active: assignData.value.is_active ? 1 : 0 
+      image_url:   finalImg,
+      is_active:   assignData.value.is_active ? 1 : 0
     }
 
-    console.log("Guardando asignación:", payload);
+    console.log('[Menus] Guardando asignación:', payload)
 
     if (payload.id) {
       await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${payload.id}`, payload)
     } else {
       await axios.post('https://matricula.casitaapps.com/api/meal-menus', payload)
     }
-    
+
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asignación guardada', showConfirmButton: false, timer: 2000 })
     showAssignModal.value = false
     await loadDailySchedule()
   } catch (e) {
-    console.error("Error al guardar asignación diaria:", e);
-    let msg = 'Fallo al procesar guardado.';
-    if(e.response?.data?.error) msg = e.response.data.error;
-    else if(e.message) msg = e.message;
-    Swal.fire('Error', msg, 'error');
+    console.error('[Menus] Error al guardar asignación diaria:', e)
+    let msg = 'Fallo al procesar guardado.'
+    if (e.response?.data?.error) msg = e.response.data.error
+    else if (e.message)          msg = e.message
+    Swal.fire('Error', msg, 'error')
   } finally {
     loading.value = false
   }
@@ -506,11 +570,16 @@ const saveDailyAssignment = async () => {
 
 const toggleDailyActive = async (menu) => {
   try {
-    const payload = { ...menu, is_active: menu.is_active ? 0 : 1 }
+    const payload = {
+      ...menu,
+      meal_date: normaliseDateStr(menu.meal_date),
+      is_active: menu.is_active ? 0 : 1
+    }
     await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${menu.id}`, payload)
     await loadDailySchedule()
-  } catch(e) {
-    logger.error("Toggle failed", e)
+  } catch (e) {
+    logger.error('Toggle failed', e)
+    Swal.fire('Error', 'No se pudo cambiar el estado del menú.', 'error')
   }
 }
 
@@ -521,16 +590,17 @@ const removeDailyMenu = async (id) => {
   try {
     await axios.delete(`https://matricula.casitaapps.com/api/meal-menus/${id}`)
     await loadDailySchedule()
-  } finally { loading.value = false }
+  } catch (e) {
+    Swal.fire('Error', 'No se pudo eliminar el menú.', 'error')
+  } finally {
+    loading.value = false
+  }
 }
 
-// --- ACTIONS: LIBRARY ---
+// ─── Actions: Library ────────────────────────────────────────────────────────
+
 const openLibraryModal = (tpl = null) => {
-  if (tpl) {
-    libraryData.value = { ...tpl }
-  } else {
-    libraryData.value = { id: null, title: '', description: '', image_url: '' }
-  }
+  libraryData.value = tpl ? { ...tpl } : { id: null, title: '', description: '', image_url: '' }
   showLibraryModal.value = true
 }
 
@@ -554,35 +624,45 @@ const saveLibraryTemplate = async () => {
 }
 
 const deleteLibraryTemplate = async (id) => {
-  const conf = await Swal.fire({ title: '¿Borrar receta?', text: 'Esto no afectará los menús que ya fueron programados con esta receta en el calendario.', icon: 'warning', showCancelButton: true })
+  const conf = await Swal.fire({
+    title: '¿Borrar receta?',
+    text: 'Esto no afectará los menús que ya fueron programados con esta receta en el calendario.',
+    icon: 'warning',
+    showCancelButton: true
+  })
   if (!conf.isConfirmed) return
   loading.value = true
   try {
     await axios.delete(`https://matricula.casitaapps.com/api/menu-library/${id}`)
     await loadLibrary()
-  } finally { loading.value = false }
+  } catch (e) {
+    Swal.fire('Error', 'No se pudo eliminar la receta.', 'error')
+  } finally {
+    loading.value = false
+  }
 }
 
-// --- UPLOAD HANDLING ---
+// ─── Upload Handling ─────────────────────────────────────────────────────────
+
 const triggerFileInput = (context) => {
   if (uploadingImage.value) return
-  const id = context === 'library' ? 'libraryFileInput' : 'assignFileInput'
-  document.getElementById(id).click()
+  document.getElementById(context === 'library' ? 'libraryFileInput' : 'assignFileInput').click()
 }
 
 const handleFileSelect = async (e, context) => {
   const file = e.target.files[0]
   if (!file) return
   if (!file.type.startsWith('image/')) return Swal.fire('Error', 'Solo imágenes', 'warning')
-  
+
   uploadingImage.value = true
   try {
     const form = new FormData()
     form.append('image', file)
-    const res = await axios.post('https://matricula.casitaapps.com/api/upload', form, { headers: { 'Content-Type': 'multipart/form-data' }})
-    
-    if (context === 'library') libraryData.value.image_url = res.data.url
-    else assignData.value.image_url = res.data.url
+    const res = await axios.post('https://matricula.casitaapps.com/api/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (context === 'library') libraryData.value.image_url  = res.data.url
+    else                        assignData.value.image_url   = res.data.url
   } catch (err) {
     Swal.fire('Error', 'Subida fallida', 'error')
   } finally {
@@ -591,12 +671,13 @@ const handleFileSelect = async (e, context) => {
   }
 }
 
-// --- UTILS ---
+// ─── Utils ───────────────────────────────────────────────────────────────────
+
 const formatDateLocal = (dateStr) => {
-  if (!dateStr) return '';
-  const parts = String(dateStr).split('T')[0].split('-');
-  if(parts.length !== 3) return dateStr;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  const s = normaliseDateStr(dateStr)
+  if (!s) return ''
+  const [y, m, d] = s.split('-')
+  return `${d}/${m}/${y}`
 }
 </script>
 
