@@ -309,6 +309,7 @@ import axios from 'axios'
 import Swal from 'sweetalert2'
 import { logger } from '../utils/logger'
 
+// Generador de fecha estrictamente local (YYYY-MM-DD) para prevenir saltos de timezone
 const getLocalTodayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -340,7 +341,7 @@ const libraryData = ref({ id: null, title: '', description: '', image_url: '' })
 const uploadingImage = ref(false)
 
 onMounted(() => {
-  // Wait for user to select a plantel
+  // Esperar selección de plantel
 })
 
 const onPlantelChange = () => {
@@ -358,7 +359,8 @@ const loadDailySchedule = async () => {
   if (!selectedPlantel.value) return
   loading.value = true
   try {
-    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${selectedDate.value}&plantel=${selectedPlantel.value}`)
+    // Agregado &t=${Date.now()} para evitar cache estático del navegador
+    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${selectedDate.value}&plantel=${selectedPlantel.value}&t=${Date.now()}`)
     dailyMenus.value = res.data
   } catch (e) {
     logger.error('Error fetching daily menus', e)
@@ -370,7 +372,8 @@ const loadDailySchedule = async () => {
 const loadLibrary = async () => {
   if (!selectedPlantel.value) return
   try {
-    const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library`)
+    // Añadido buster para prevenir cache.
+    const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?t=${Date.now()}`)
     library.value = res.data
   } catch (e) {
     logger.error('Error fetching library', e)
@@ -382,7 +385,7 @@ const scheduleMap = computed(() => {
   const map = {}
   dailyMenus.value.forEach(m => {
     if (m && m.meal_type) {
-      map[m.meal_type.toUpperCase()] = m // Asegura que las keys sean exactas (DESAYUNO, COMIDA, CENA)
+      map[m.meal_type.toUpperCase()] = m 
     }
   })
   return map
@@ -418,7 +421,12 @@ const openAssignModal = (mealType, existingMenu) => {
   assignTab.value = 'library'
   if (existingMenu) {
     assignTab.value = 'custom'
-    assignData.value = { ...existingMenu, selectedTemplateId: null, is_active: !!existingMenu.is_active }
+    assignData.value = { 
+        ...existingMenu, 
+        meal_date: existingMenu.meal_date.split('T')[0], // Limpia hora/ISO para prevenir desajustes
+        selectedTemplateId: null, 
+        is_active: !!existingMenu.is_active 
+    }
   } else {
     assignData.value = { id: null, meal_date: selectedDate.value, meal_type: mealType, title: '', description: '', image_url: '', is_active: true, selectedTemplateId: null }
   }
@@ -438,12 +446,12 @@ const saveDailyAssignment = async () => {
     const payload = {
       id: assignData.value.id,
       plantel: selectedPlantel.value,
-      meal_date: assignData.value.meal_date,
-      meal_type: assignData.value.meal_type.toUpperCase(), // Convertido a mayúsculas para seguridad
+      meal_date: assignData.value.meal_date.split('T')[0], // Asegura que solo envía YYYY-MM-DD
+      meal_type: assignData.value.meal_type.trim().toUpperCase(),
       title: assignData.value.title,
       description: assignData.value.description,
       image_url: assignData.value.image_url,
-      is_active: assignData.value.is_active ? 1 : 0 // Casteo explícito
+      is_active: assignData.value.is_active ? 1 : 0 
     }
     
     if (assignTab.value === 'library' && assignData.value.selectedTemplateId) {
@@ -462,7 +470,7 @@ const saveDailyAssignment = async () => {
     }
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asignación guardada', showConfirmButton: false, timer: 2000 })
     showAssignModal.value = false
-    await loadDailySchedule() // Esperamos la recarga para que UI actualice inmediatamente
+    await loadDailySchedule() // Forzamos carga fresca con await
   } catch (e) {
     Swal.fire('Error', 'Fallo al guardar.', 'error')
   } finally {
@@ -560,7 +568,7 @@ const handleFileSelect = async (e, context) => {
 // --- UTILS ---
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-');
+  const [y, m, d] = dateStr.split('T')[0].split('-');
   return `${d}/${m}/${y}`;
 }
 </script>

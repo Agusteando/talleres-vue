@@ -535,7 +535,8 @@ const fetchTodayMenu = async () => {
   loadingMenu.value = true;
   try {
     const todayStr = getLocalTodayStr();
-    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&plantel=${currentWorkshop.value.plantel}`);
+    // Añadido buster param &t=${Date.now()} para evitar cache persistente
+    const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&plantel=${currentWorkshop.value.plantel}&t=${Date.now()}`);
     if (res.data && res.data.length > 0) {
       const found = res.data.find(m => m.meal_type && m.meal_type.toUpperCase() === currentWorkshop.value.servicio.toUpperCase());
       todayMenu.value = found || null;
@@ -599,7 +600,7 @@ const openInlineMenuEditor = async (menu) => {
   
   if (menuLibrary.value.length === 0) {
     try {
-      const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library`);
+      const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?t=${Date.now()}`);
       menuLibrary.value = res.data;
     } catch(e) {}
   }
@@ -647,8 +648,8 @@ const saveInlineMenu = async () => {
     const payload = { 
       id: menuFormData.value.id,
       plantel: currentWorkshop.value.plantel,
-      meal_date: menuFormData.value.meal_date,
-      meal_type: menuFormData.value.meal_type.toUpperCase(), // Cast a mayúsculas
+      meal_date: menuFormData.value.meal_date.split('T')[0], // Limpia hora
+      meal_type: menuFormData.value.meal_type.trim().toUpperCase(), 
       title: menuFormData.value.title,
       description: menuFormData.value.description,
       image_url: menuFormData.value.image_url,
@@ -671,7 +672,7 @@ const saveInlineMenu = async () => {
     }
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Asignado', showConfirmButton: false, timer: 2000 });
     closeMenuEditor();
-    await fetchTodayMenu(); // Refrescar UI Inmediatamente con await
+    await fetchTodayMenu();
   } catch (e) {
     logger.error('Failed to save inline menu', e);
     Swal.fire('Error', 'No se pudo guardar el menú.', 'error');
