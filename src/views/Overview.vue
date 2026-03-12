@@ -187,6 +187,7 @@ const searchSrv = ref('')
 const masterData = ref({})
 const flatStudents = ref([])
 const attendanceMap = ref({}) 
+const evaluatedServiceDays = ref(new Set()) // Tracks days where a service was formally evaluated
 
 const todayObj = new Date()
 const selectedMonth = ref(todayObj.getMonth() + 1)
@@ -250,8 +251,17 @@ const loadAnalytics = async () => {
     const raw = res.data.data || []
     
     attendanceMap.value = {}
-    raw.forEach(r => { attendanceMap.value[`${r.matricula}_${r.servicio}_${r.day_of_month}`] = parseInt(r.attendance, 10) })
+    const evaluated = new Set()
+
+    raw.forEach(r => {
+      let val = parseInt(r.attendance, 10)
+      attendanceMap.value[`${r.matricula}_${r.servicio}_${r.day_of_month}`] = val
+      
+      // Mark this service as having had attendance explicitly taken on this day
+      evaluated.add(`${r.servicio}_${r.day_of_month}`)
+    })
     
+    evaluatedServiceDays.value = evaluated
     processAnalytics()
   } catch (e) {
     logger.error('Analytics load failed', e)
@@ -279,10 +289,20 @@ const processAnalytics = () => {
     let stuEval = 0, stuAtt = 0
     workingDays.value.forEach(d => {
       if (isFutureDate(d)) return
-      const status = attendanceMap.value[`${s.matricula}_${srv}_${d}`]
-      if (status === 1 || status === 0) {
+      
+      const rawStatus = attendanceMap.value[`${s.matricula}_${srv}_${d}`]
+      const isServiceEvaluatedToday = evaluatedServiceDays.value.has(`${srv}_${d}`)
+      
+      // The Core Fix: If the service had attendance taken, but this specific student
+      // has no record, they are explicitly ABSENT (0), not UNEVALUATED.
+      let effectiveStatus = rawStatus
+      if (effectiveStatus === undefined && isServiceEvaluatedToday) {
+        effectiveStatus = 0
+      }
+
+      if (effectiveStatus === 1 || effectiveStatus === 0) {
         stuEval++; aggP[p].evaluated++; aggS[sKey].evaluated++; gEval++;
-        if (status === 1) { stuAtt++; aggP[p].actualAtt++; aggS[sKey].actualAtt++; gAtt++; }
+        if (effectiveStatus === 1) { stuAtt++; aggP[p].actualAtt++; aggS[sKey].actualAtt++; gAtt++; }
       }
     })
 
@@ -300,12 +320,29 @@ const processAnalytics = () => {
 
 const toggleAttendance = async (stu, day) => {
   if (isFutureDate(day)) return
-  const key = `${stu.matricula}_${currentServicio.value}_${day}`
-  const curr = attendanceMap.value[key]
-  let next = curr === undefined ? 1 : (curr === 1 ? 0 : undefined)
   
-  if (next === undefined) delete attendanceMap.value[key]
-  else attendanceMap.value[key] = next
+  const key = `${stu.matricula}_${currentServicio.value}_${day}`
+  const isServiceEvaluatedToday = evaluatedServiceDays.value.has(`${currentServicio.value}_${day}`)
+  
+  const curr = attendanceMap.value[key]
+  let effectiveCurr = curr
+  
+  // Inherit implicitly absent state during toggle 
+  if (effectiveCurr === undefined && isServiceEvaluatedToday) {
+    effectiveCurr = 0
+  }
+  
+  let next;
+  if (effectiveCurr === undefined) next = 1
+  else if (effectiveCurr === 1) next = 0
+  else next = undefined
+  
+  if (next === undefined) {
+    delete attendanceMap.value[key]
+  } else {
+    attendanceMap.value[key] = next
+    evaluatedServiceDays.value.add(`${currentServicio.value}_${day}`)
+  }
   
   processAnalytics() 
 
@@ -336,9 +373,16 @@ const getColorClassBg = (r) => { if(r === 0) return 'bg-secondary opacity-25'; i
 
 const getCellClass = (mat, day) => {
   if (isFutureDate(day)) return 'bg-light cell-disabled opacity-50'
-  const st = attendanceMap.value[`${mat}_${currentServicio.value}_${day}`]
-  if (st === 1) return 'bg-success bg-opacity-25'
-  if (st === 0) return 'bg-danger bg-opacity-25'
+  const rawStatus = attendanceMap.value[`${mat}_${currentServicio.value}_${day}`]
+  const isServiceEvaluatedToday = evaluatedServiceDays.value.has(`${currentServicio.value}_${day}`)
+  
+  let effectiveStatus = rawStatus
+  if (effectiveStatus === undefined && isServiceEvaluatedToday) {
+    effectiveStatus = 0
+  }
+
+  if (effectiveStatus === 1) return 'bg-success bg-opacity-25'
+  if (effectiveStatus === 0) return 'bg-danger bg-opacity-25'
   return 'bg-white'
 }
 

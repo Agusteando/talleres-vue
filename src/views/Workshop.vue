@@ -482,16 +482,6 @@ const getLocalTodayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-/**
- * Normalises any date value from the API into a plain YYYY-MM-DD string.
- *
- * ROOT CAUSE OF THE BUG:
- *   MySQL2 (without `dateStrings: true`) returns DATE columns as JS Date objects.
- *   JSON.stringify applies the UTC offset, so '2024-01-15' stored in MySQL becomes
- *   '2024-01-14T18:00:00.000Z' for a UTC-6 server. The frontend splits on 'T' and
- *   gets '2024-01-14' (yesterday), saves/queries under the wrong date, the GET for
- *   today returns nothing — hence "success toast, no frontend change, no DB entry".
- */
 const normaliseDateStr = (raw) => {
   if (!raw) return ''
   const s = String(raw)
@@ -502,6 +492,8 @@ const normaliseDateStr = (raw) => {
   if (isNaN(d.getTime())) return s
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size))
 
 // ─── General State ────────────────────────────────────────────────────────────
 
@@ -555,7 +547,6 @@ const fetchTodayMenu = async () => {
     if (res.data && res.data.length > 0) {
       const target = currentWorkshop.value.servicio.toUpperCase()
       const found  = res.data.find(m => m.meal_type && String(m.meal_type).trim().toUpperCase() === target)
-      // Normalise meal_date so edit round-trips stay correct.
       todayMenu.value = found ? { ...found, meal_date: normaliseDateStr(found.meal_date) } : null
     } else {
       todayMenu.value = null
@@ -601,7 +592,6 @@ const openInlineMenuEditor = async (menu) => {
     menuTab.value = 'custom'
     menuFormData.value = {
       ...menu,
-      // FIX: normalise so we never carry over a timezone-shifted ISO string.
       meal_date:          normaliseDateStr(menu.meal_date) || getLocalTodayStr(),
       meal_type:          String(menu.meal_type || '').trim().toUpperCase(),
       is_active:          menu.is_active === 1 || menu.is_active === true,
@@ -620,7 +610,6 @@ const openInlineMenuEditor = async (menu) => {
     }
   }
 
-  // Load library if not already loaded; pass plantel for correct filtering.
   if (menuLibrary.value.length === 0) {
     try {
       const res = await axios.get('https://matricula.casitaapps.com/api/menu-library', {
@@ -629,7 +618,6 @@ const openInlineMenuEditor = async (menu) => {
       menuLibrary.value = res.data || []
     } catch (e) {
       logger.error('Failed to load menu library in workshop', e)
-      // Non-fatal: user can still use the custom tab.
     }
   }
 
@@ -686,7 +674,6 @@ const saveInlineMenu = async () => {
       }
     }
 
-    // FIX: normalise the date to avoid off-by-one from MySQL2 serialisation.
     const mDate = normaliseDateStr(menuFormData.value.meal_date) || getLocalTodayStr()
     const mType = String(menuFormData.value.meal_type || '').trim().toUpperCase()
 
@@ -705,8 +692,6 @@ const saveInlineMenu = async () => {
       image_url:   finalImg,
       is_active:   menuFormData.value.is_active ? 1 : 0
     }
-
-    console.log('[Workshop] Guardando menú inline:', payload)
 
     if (payload.id) {
       await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${payload.id}`, payload)
@@ -968,7 +953,7 @@ const openWorkshop = async (shortcut) => {
   activeGrupo.value           = null
   showGroupSelectModal.value  = false
   todayMenu.value             = null
-  menuLibrary.value           = []   // reset so it reloads with correct plantel
+  menuLibrary.value           = []   
 
   const savedSort = localStorage.getItem(getSortKey())
   customSortOrder.value = savedSort ? JSON.parse(savedSort) : []
@@ -979,6 +964,8 @@ const openWorkshop = async (shortcut) => {
   if (cachedData) {
     studentsList.value = applySortOrder(JSON.parse(cachedData))
     syncing.value = true
+    
+    // Original working read behavior
     await fetchAttendance()
     fetchTimeline()
   } else {
@@ -1070,6 +1057,7 @@ const filteredStudents = computed(() => {
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
+// Original working read behavior
 const fetchAttendance = async () => {
   if (studentsList.value.length === 0) return
   const payload = studentsList.value.map(s => ({ matricula: s.matricula, servicio: currentWorkshop.value.servicio }))
@@ -1109,13 +1097,23 @@ const toggleSelectAll = () => {
   allSelected.value = !allSelected.value
 }
 
+// Replaced bulk insertion with explicit 1s insertion for ONLY present students
 const recordSelectedAttendance = async () => {
   loading.value = true
   try {
-    await axios.post('https://bot.casitaapps.com/record-attendance-bulk', {
-      matriculas: selectedForAttendance.value,
-      servicio:   currentWorkshop.value.servicio
+    const todayStr = getLocalTodayStr()
+    const promises = selectedForAttendance.value.map(mat => {
+      return axios.post('https://bot.casitaapps.com/record-attendance', {
+        matricula: mat,
+        servicio: currentWorkshop.value.servicio,
+        status: 1, // FORCE Explicit Presence overrides DB defaults
+        targetDate: todayStr
+      }).catch(() => null)
     })
+
+    for (const chunk of chunkArray(promises, 10)) {
+        await Promise.all(chunk)
+    }
 
     if (isMealService.value) {
       await triggerParentNotifications(selectedForAttendance.value)
