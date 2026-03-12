@@ -370,7 +370,6 @@ const loadDailySchedule = async () => {
 const loadLibrary = async () => {
   if (!selectedPlantel.value) return
   try {
-    // Al remover ?plantel=... trae toda la biblioteca de platillos y son reutilizables.
     const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library`)
     library.value = res.data
   } catch (e) {
@@ -381,7 +380,11 @@ const loadLibrary = async () => {
 // --- COMPUTED ---
 const scheduleMap = computed(() => {
   const map = {}
-  dailyMenus.value.forEach(m => map[m.meal_type] = m)
+  dailyMenus.value.forEach(m => {
+    if (m && m.meal_type) {
+      map[m.meal_type.toUpperCase()] = m // Asegura que las keys sean exactas (DESAYUNO, COMIDA, CENA)
+    }
+  })
   return map
 })
 
@@ -414,7 +417,7 @@ const openAssignModal = (mealType, existingMenu) => {
   searchPicker.value = ''
   assignTab.value = 'library'
   if (existingMenu) {
-    assignTab.value = 'custom' // Default to custom if editing existing
+    assignTab.value = 'custom'
     assignData.value = { ...existingMenu, selectedTemplateId: null, is_active: !!existingMenu.is_active }
   } else {
     assignData.value = { id: null, meal_date: selectedDate.value, meal_type: mealType, title: '', description: '', image_url: '', is_active: true, selectedTemplateId: null }
@@ -424,7 +427,6 @@ const openAssignModal = (mealType, existingMenu) => {
 
 const selectTemplateForAssignment = (tpl) => {
   assignData.value.selectedTemplateId = tpl.id
-  // Automatically fill custom data behind the scenes just in case they switch tabs
   assignData.value.title = tpl.title
   assignData.value.description = tpl.description
   assignData.value.image_url = tpl.image_url
@@ -437,18 +439,20 @@ const saveDailyAssignment = async () => {
       id: assignData.value.id,
       plantel: selectedPlantel.value,
       meal_date: assignData.value.meal_date,
-      meal_type: assignData.value.meal_type,
+      meal_type: assignData.value.meal_type.toUpperCase(), // Convertido a mayúsculas para seguridad
       title: assignData.value.title,
       description: assignData.value.description,
       image_url: assignData.value.image_url,
-      is_active: assignData.value.is_active
+      is_active: assignData.value.is_active ? 1 : 0 // Casteo explícito
     }
     
     if (assignTab.value === 'library' && assignData.value.selectedTemplateId) {
       const tpl = library.value.find(t => t.id === assignData.value.selectedTemplateId)
-      payload.title = tpl.title
-      payload.description = tpl.description
-      payload.image_url = tpl.image_url
+      if (tpl) {
+        payload.title = tpl.title
+        payload.description = tpl.description
+        payload.image_url = tpl.image_url
+      }
     }
 
     if (payload.id) {
@@ -458,7 +462,7 @@ const saveDailyAssignment = async () => {
     }
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asignación guardada', showConfirmButton: false, timer: 2000 })
     showAssignModal.value = false
-    loadDailySchedule()
+    await loadDailySchedule() // Esperamos la recarga para que UI actualice inmediatamente
   } catch (e) {
     Swal.fire('Error', 'Fallo al guardar.', 'error')
   } finally {
@@ -470,7 +474,7 @@ const toggleDailyActive = async (menu) => {
   try {
     const payload = { ...menu, is_active: menu.is_active ? 0 : 1 }
     await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${menu.id}`, payload)
-    loadDailySchedule()
+    await loadDailySchedule()
   } catch(e) {
     logger.error("Toggle failed", e)
   }
@@ -482,7 +486,7 @@ const removeDailyMenu = async (id) => {
   loading.value = true
   try {
     await axios.delete(`https://matricula.casitaapps.com/api/meal-menus/${id}`)
-    loadDailySchedule()
+    await loadDailySchedule()
   } finally { loading.value = false }
 }
 
@@ -507,7 +511,7 @@ const saveLibraryTemplate = async () => {
     }
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Receta Guardada', showConfirmButton: false, timer: 2000 })
     showLibraryModal.value = false
-    loadLibrary()
+    await loadLibrary()
   } catch (e) {
     Swal.fire('Error', 'Fallo al guardar en la biblioteca.', 'error')
   } finally {
@@ -521,7 +525,7 @@ const deleteLibraryTemplate = async (id) => {
   loading.value = true
   try {
     await axios.delete(`https://matricula.casitaapps.com/api/menu-library/${id}`)
-    loadLibrary()
+    await loadLibrary()
   } finally { loading.value = false }
 }
 

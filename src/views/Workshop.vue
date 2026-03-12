@@ -537,7 +537,7 @@ const fetchTodayMenu = async () => {
     const todayStr = getLocalTodayStr();
     const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&plantel=${currentWorkshop.value.plantel}`);
     if (res.data && res.data.length > 0) {
-      const found = res.data.find(m => m.meal_type === currentWorkshop.value.servicio.toUpperCase());
+      const found = res.data.find(m => m.meal_type && m.meal_type.toUpperCase() === currentWorkshop.value.servicio.toUpperCase());
       todayMenu.value = found || null;
     } else {
       todayMenu.value = null;
@@ -648,7 +648,7 @@ const saveInlineMenu = async () => {
       id: menuFormData.value.id,
       plantel: currentWorkshop.value.plantel,
       meal_date: menuFormData.value.meal_date,
-      meal_type: menuFormData.value.meal_type,
+      meal_type: menuFormData.value.meal_type.toUpperCase(), // Cast a mayúsculas
       title: menuFormData.value.title,
       description: menuFormData.value.description,
       image_url: menuFormData.value.image_url,
@@ -657,9 +657,11 @@ const saveInlineMenu = async () => {
 
     if (menuTab.value === 'library' && menuFormData.value.selectedTemplateId) {
       const tpl = menuLibrary.value.find(t => t.id === menuFormData.value.selectedTemplateId);
-      payload.title = tpl.title;
-      payload.description = tpl.description;
-      payload.image_url = tpl.image_url;
+      if (tpl) {
+        payload.title = tpl.title;
+        payload.description = tpl.description;
+        payload.image_url = tpl.image_url;
+      }
     }
 
     if (payload.id) {
@@ -669,7 +671,7 @@ const saveInlineMenu = async () => {
     }
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Asignado', showConfirmButton: false, timer: 2000 });
     closeMenuEditor();
-    await fetchTodayMenu();
+    await fetchTodayMenu(); // Refrescar UI Inmediatamente con await
   } catch (e) {
     logger.error('Failed to save inline menu', e);
     Swal.fire('Error', 'No se pudo guardar el menú.', 'error');
