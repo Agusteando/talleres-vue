@@ -166,7 +166,7 @@
         <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-light">
           <div class="modal-header border-bottom-0 pb-0 bg-white">
             <h5 class="modal-title fw-bold text-dark">
-              Programar <span class="text-warning">{{ assignData.meal_type }}</span> el <span class="text-primary">{{ formatDate(assignData.meal_date) }}</span>
+              Programar <span class="text-warning">{{ assignData.meal_type }}</span> el <span class="text-primary">{{ formatDateLocal(assignData.meal_date) }}</span>
             </h5>
             <button type="button" class="btn-close" @click="showAssignModal = false"></button>
           </div>
@@ -309,7 +309,7 @@ import axios from 'axios'
 import Swal from 'sweetalert2'
 import { logger } from '../utils/logger'
 
-// Generador de fecha estrictamente local (YYYY-MM-DD) para prevenir saltos de timezone
+// Generador de fecha local para evitar timezone leaps (YYYY-MM-DD)
 const getLocalTodayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -359,7 +359,6 @@ const loadDailySchedule = async () => {
   if (!selectedPlantel.value) return
   loading.value = true
   try {
-    // Agregado &t=${Date.now()} para evitar cache estático del navegador
     const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${selectedDate.value}&plantel=${selectedPlantel.value}&t=${Date.now()}`)
     dailyMenus.value = res.data
   } catch (e) {
@@ -372,7 +371,6 @@ const loadDailySchedule = async () => {
 const loadLibrary = async () => {
   if (!selectedPlantel.value) return
   try {
-    // Añadido buster para prevenir cache.
     const res = await axios.get(`https://matricula.casitaapps.com/api/menu-library?t=${Date.now()}`)
     library.value = res.data
   } catch (e) {
@@ -385,7 +383,7 @@ const scheduleMap = computed(() => {
   const map = {}
   dailyMenus.value.forEach(m => {
     if (m && m.meal_type) {
-      map[m.meal_type.toUpperCase()] = m 
+      map[String(m.meal_type).trim().toUpperCase()] = m 
     }
   })
   return map
@@ -394,13 +392,13 @@ const scheduleMap = computed(() => {
 const filteredLibrary = computed(() => {
   if (!searchLibrary.value) return library.value
   const q = searchLibrary.value.toLowerCase()
-  return library.value.filter(t => t.title.toLowerCase().includes(q))
+  return library.value.filter(t => (t.title || '').toLowerCase().includes(q))
 })
 
 const filteredPickerLibrary = computed(() => {
   if (!searchPicker.value) return library.value
   const q = searchPicker.value.toLowerCase()
-  return library.value.filter(t => t.title.toLowerCase().includes(q))
+  return library.value.filter(t => (t.title || '').toLowerCase().includes(q))
 })
 
 const isAssignReady = computed(() => {
@@ -423,56 +421,84 @@ const openAssignModal = (mealType, existingMenu) => {
     assignTab.value = 'custom'
     assignData.value = { 
         ...existingMenu, 
-        meal_date: existingMenu.meal_date.split('T')[0], // Limpia hora/ISO para prevenir desajustes
+        meal_date: existingMenu.meal_date ? String(existingMenu.meal_date).split('T')[0] : selectedDate.value,
         selectedTemplateId: null, 
         is_active: !!existingMenu.is_active 
     }
   } else {
-    assignData.value = { id: null, meal_date: selectedDate.value, meal_type: mealType, title: '', description: '', image_url: '', is_active: true, selectedTemplateId: null }
+    assignData.value = { 
+      id: null, 
+      meal_date: selectedDate.value, 
+      meal_type: String(mealType).trim().toUpperCase(), 
+      title: '', 
+      description: '', 
+      image_url: '', 
+      is_active: true, 
+      selectedTemplateId: null 
+    }
   }
   showAssignModal.value = true
 }
 
 const selectTemplateForAssignment = (tpl) => {
   assignData.value.selectedTemplateId = tpl.id
-  assignData.value.title = tpl.title
-  assignData.value.description = tpl.description
-  assignData.value.image_url = tpl.image_url
+  assignData.value.title = tpl.title || ''
+  assignData.value.description = tpl.description || ''
+  assignData.value.image_url = tpl.image_url || ''
 }
 
 const saveDailyAssignment = async () => {
   loading.value = true
   try {
-    const payload = {
-      id: assignData.value.id,
-      plantel: selectedPlantel.value,
-      meal_date: assignData.value.meal_date.split('T')[0], // Asegura que solo envía YYYY-MM-DD
-      meal_type: assignData.value.meal_type.trim().toUpperCase(),
-      title: assignData.value.title,
-      description: assignData.value.description,
-      image_url: assignData.value.image_url,
-      is_active: assignData.value.is_active ? 1 : 0 
-    }
-    
+    let finalTitle = assignData.value.title || '';
+    let finalDesc = assignData.value.description || '';
+    let finalImg = assignData.value.image_url || '';
+
+    // Si seleccionó desde la librería, extraemos forzosamente los valores para evitar envíos vacíos.
     if (assignTab.value === 'library' && assignData.value.selectedTemplateId) {
-      const tpl = library.value.find(t => t.id === assignData.value.selectedTemplateId)
+      const tpl = library.value.find(t => String(t.id) === String(assignData.value.selectedTemplateId))
       if (tpl) {
-        payload.title = tpl.title
-        payload.description = tpl.description
-        payload.image_url = tpl.image_url
+        finalTitle = tpl.title;
+        finalDesc = tpl.description;
+        finalImg = tpl.image_url;
       }
     }
+
+    const mDate = assignData.value.meal_date ? String(assignData.value.meal_date).split('T')[0] : selectedDate.value;
+    const mType = String(assignData.value.meal_type || '').trim().toUpperCase();
+
+    if (!finalTitle || !mType || !mDate) {
+       throw new Error("El título, la fecha y el tipo de comida son obligatorios.");
+    }
+
+    const payload = {
+      id: assignData.value.id || null,
+      plantel: selectedPlantel.value,
+      meal_date: mDate,
+      meal_type: mType,
+      title: finalTitle,
+      description: finalDesc,
+      image_url: finalImg,
+      is_active: assignData.value.is_active ? 1 : 0 
+    }
+
+    console.log("Guardando asignación:", payload);
 
     if (payload.id) {
       await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${payload.id}`, payload)
     } else {
       await axios.post('https://matricula.casitaapps.com/api/meal-menus', payload)
     }
+    
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asignación guardada', showConfirmButton: false, timer: 2000 })
     showAssignModal.value = false
-    await loadDailySchedule() // Forzamos carga fresca con await
+    await loadDailySchedule()
   } catch (e) {
-    Swal.fire('Error', 'Fallo al guardar.', 'error')
+    console.error("Error al guardar asignación diaria:", e);
+    let msg = 'Fallo al procesar guardado.';
+    if(e.response?.data?.error) msg = e.response.data.error;
+    else if(e.message) msg = e.message;
+    Swal.fire('Error', msg, 'error');
   } finally {
     loading.value = false
   }
@@ -566,10 +592,11 @@ const handleFileSelect = async (e, context) => {
 }
 
 // --- UTILS ---
-const formatDate = (dateStr) => {
+const formatDateLocal = (dateStr) => {
   if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('T')[0].split('-');
-  return `${d}/${m}/${y}`;
+  const parts = String(dateStr).split('T')[0].split('-');
+  if(parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 </script>
 

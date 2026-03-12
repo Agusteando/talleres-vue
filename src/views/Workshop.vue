@@ -535,10 +535,9 @@ const fetchTodayMenu = async () => {
   loadingMenu.value = true;
   try {
     const todayStr = getLocalTodayStr();
-    // Añadido buster param &t=${Date.now()} para evitar cache persistente
     const res = await axios.get(`https://matricula.casitaapps.com/api/meal-menus?date=${todayStr}&plantel=${currentWorkshop.value.plantel}&t=${Date.now()}`);
     if (res.data && res.data.length > 0) {
-      const found = res.data.find(m => m.meal_type && m.meal_type.toUpperCase() === currentWorkshop.value.servicio.toUpperCase());
+      const found = res.data.find(m => m.meal_type && String(m.meal_type).trim().toUpperCase() === currentWorkshop.value.servicio.toUpperCase());
       todayMenu.value = found || null;
     } else {
       todayMenu.value = null;
@@ -571,7 +570,7 @@ const menuFormData = ref({
 const filteredMenuLibrary = computed(() => {
   if (!searchMenuLibrary.value) return menuLibrary.value;
   const q = searchMenuLibrary.value.toLowerCase();
-  return menuLibrary.value.filter(t => t.title.toLowerCase().includes(q));
+  return menuLibrary.value.filter(t => (t.title || '').toLowerCase().includes(q));
 });
 
 const isMenuInlineReady = computed(() => {
@@ -584,7 +583,12 @@ const openInlineMenuEditor = async (menu) => {
   menuTab.value = 'library';
   if (menu) {
     menuTab.value = 'custom';
-    menuFormData.value = { ...menu, meal_date: menu.meal_date.split('T')[0], is_active: !!menu.is_active, selectedTemplateId: null };
+    menuFormData.value = { 
+        ...menu, 
+        meal_date: menu.meal_date ? String(menu.meal_date).split('T')[0] : getLocalTodayStr(),
+        is_active: !!menu.is_active, 
+        selectedTemplateId: null 
+    };
   } else {
     menuFormData.value = {
       id: null,
@@ -610,9 +614,9 @@ const openInlineMenuEditor = async (menu) => {
 
 const selectInlineTemplate = (tpl) => {
   menuFormData.value.selectedTemplateId = tpl.id;
-  menuFormData.value.title = tpl.title;
-  menuFormData.value.description = tpl.description;
-  menuFormData.value.image_url = tpl.image_url;
+  menuFormData.value.title = tpl.title || '';
+  menuFormData.value.description = tpl.description || '';
+  menuFormData.value.image_url = tpl.image_url || '';
 };
 
 const closeMenuEditor = () => { showMenuEditor.value = false; };
@@ -645,37 +649,54 @@ const handleInlineFileSelect = async (e) => {
 const saveInlineMenu = async () => {
   loading.value = true;
   try {
+    let finalTitle = menuFormData.value.title || '';
+    let finalDesc = menuFormData.value.description || '';
+    let finalImg = menuFormData.value.image_url || '';
+
+    if (menuTab.value === 'library' && menuFormData.value.selectedTemplateId) {
+      const tpl = menuLibrary.value.find(t => String(t.id) === String(menuFormData.value.selectedTemplateId));
+      if (tpl) {
+        finalTitle = tpl.title;
+        finalDesc = tpl.description;
+        finalImg = tpl.image_url;
+      }
+    }
+
+    const mDate = menuFormData.value.meal_date ? String(menuFormData.value.meal_date).split('T')[0] : getLocalTodayStr();
+    const mType = String(menuFormData.value.meal_type || '').trim().toUpperCase();
+
+    if (!finalTitle || !mType || !mDate) {
+       throw new Error("Título y fecha son requeridos");
+    }
+
     const payload = { 
-      id: menuFormData.value.id,
+      id: menuFormData.value.id || null,
       plantel: currentWorkshop.value.plantel,
-      meal_date: menuFormData.value.meal_date.split('T')[0], // Limpia hora
-      meal_type: menuFormData.value.meal_type.trim().toUpperCase(), 
-      title: menuFormData.value.title,
-      description: menuFormData.value.description,
-      image_url: menuFormData.value.image_url,
+      meal_date: mDate,
+      meal_type: mType, 
+      title: finalTitle,
+      description: finalDesc,
+      image_url: finalImg,
       is_active: menuFormData.value.is_active ? 1 : 0 
     };
 
-    if (menuTab.value === 'library' && menuFormData.value.selectedTemplateId) {
-      const tpl = menuLibrary.value.find(t => t.id === menuFormData.value.selectedTemplateId);
-      if (tpl) {
-        payload.title = tpl.title;
-        payload.description = tpl.description;
-        payload.image_url = tpl.image_url;
-      }
-    }
+    console.log("Guardando menú inline:", payload);
 
     if (payload.id) {
       await axios.put(`https://matricula.casitaapps.com/api/meal-menus/${payload.id}`, payload);
     } else {
       await axios.post('https://matricula.casitaapps.com/api/meal-menus', payload);
     }
+    
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Menú Asignado', showConfirmButton: false, timer: 2000 });
     closeMenuEditor();
     await fetchTodayMenu();
   } catch (e) {
-    logger.error('Failed to save inline menu', e);
-    Swal.fire('Error', 'No se pudo guardar el menú.', 'error');
+    console.error('Error al guardar menú en Workshop:', e);
+    let msg = 'Error interno';
+    if(e.response?.data?.error) msg = e.response.data.error;
+    else if(e.message) msg = e.message;
+    Swal.fire('Error', msg, 'error');
   } finally {
     loading.value = false;
   }
@@ -1181,7 +1202,7 @@ const openIncidenciaModal = async (stu) => {
 <style scoped>
 .cursor-pointer { cursor: pointer; }
 .hover-card { transition: transform 0.2s, box-shadow 0.2s; }
-.hover-card:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+.hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
 .attendance-card { transition: all 0.2s; overflow: hidden; }
 .attendance-card:hover { transform: scale(1.02); }
 .border-transparent { border-color: transparent; }
