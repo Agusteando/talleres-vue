@@ -187,7 +187,7 @@ const searchSrv = ref('')
 const masterData = ref({})
 const flatStudents = ref([])
 const attendanceMap = ref({}) 
-const evaluatedServiceDays = ref(new Set()) // Tracks days where a service was formally evaluated
+const evaluatedServiceDays = ref(new Set()) // Tracks evaluated days per service
 
 const todayObj = new Date()
 const selectedMonth = ref(todayObj.getMonth() + 1)
@@ -254,10 +254,10 @@ const loadAnalytics = async () => {
     const evaluated = new Set()
 
     raw.forEach(r => {
-      let val = parseInt(r.attendance, 10)
-      attendanceMap.value[`${r.matricula}_${r.servicio}_${r.day_of_month}`] = val
+      // THE FIX: Ignore the DB's default 0. The mere existence of the row means the teacher saved it as PRESENT!
+      attendanceMap.value[`${r.matricula}_${r.servicio}_${r.day_of_month}`] = 1 
       
-      // Mark this service as having had attendance explicitly taken on this day
+      // Mark this service as having been evaluated on this specific day
       evaluated.add(`${r.servicio}_${r.day_of_month}`)
     })
     
@@ -266,6 +266,17 @@ const loadAnalytics = async () => {
   } catch (e) {
     logger.error('Analytics load failed', e)
   } finally { loading.value = false }
+}
+
+// THE FIX: Smart reading logic to determine the UI state
+const getCellState = (mat, srv, day) => {
+  const hasRow = attendanceMap.value[`${mat}_${srv}_${day}`] === 1
+  if (hasRow) return 1 // Presente (Verde)
+  
+  const isDayEvaluated = evaluatedServiceDays.value.has(`${srv}_${day}`)
+  if (isDayEvaluated) return 0 // Ausente (Rojo) porque el profesor tomó lista pero no lo seleccionó
+  
+  return -1 // Sin evaluar (Gris)
 }
 
 const processAnalytics = () => {
@@ -290,19 +301,10 @@ const processAnalytics = () => {
     workingDays.value.forEach(d => {
       if (isFutureDate(d)) return
       
-      const rawStatus = attendanceMap.value[`${s.matricula}_${srv}_${d}`]
-      const isServiceEvaluatedToday = evaluatedServiceDays.value.has(`${srv}_${d}`)
-      
-      // The Core Fix: If the service had attendance taken, but this specific student
-      // has no record, they are explicitly ABSENT (0), not UNEVALUATED.
-      let effectiveStatus = rawStatus
-      if (effectiveStatus === undefined && isServiceEvaluatedToday) {
-        effectiveStatus = 0
-      }
-
-      if (effectiveStatus === 1 || effectiveStatus === 0) {
+      const state = getCellState(s.matricula, srv, d)
+      if (state === 1 || state === 0) { // If Evaluated
         stuEval++; aggP[p].evaluated++; aggS[sKey].evaluated++; gEval++;
-        if (effectiveStatus === 1) { stuAtt++; aggP[p].actualAtt++; aggS[sKey].actualAtt++; gAtt++; }
+        if (state === 1) { stuAtt++; aggP[p].actualAtt++; aggS[sKey].actualAtt++; gAtt++; } // If Present
       }
     })
 
@@ -321,27 +323,20 @@ const processAnalytics = () => {
 const toggleAttendance = async (stu, day) => {
   if (isFutureDate(day)) return
   
-  const key = `${stu.matricula}_${currentServicio.value}_${day}`
-  const isServiceEvaluatedToday = evaluatedServiceDays.value.has(`${currentServicio.value}_${day}`)
+  const srv = currentServicio.value
+  const currentState = getCellState(stu.matricula, srv, day)
+  const key = `${stu.matricula}_${srv}_${day}`
   
-  const curr = attendanceMap.value[key]
-  let effectiveCurr = curr
-  
-  // Inherit implicitly absent state during toggle 
-  if (effectiveCurr === undefined && isServiceEvaluatedToday) {
-    effectiveCurr = 0
-  }
-  
-  let next;
-  if (effectiveCurr === undefined) next = 1
-  else if (effectiveCurr === 1) next = 0
-  else next = undefined
-  
-  if (next === undefined) {
+  let nextStatus;
+  if (currentState === 1) {
+    // Current is Present -> Make Absent (Delete the row)
+    nextStatus = -1 // Assuming backend treats -1 as delete
     delete attendanceMap.value[key]
   } else {
-    attendanceMap.value[key] = next
-    evaluatedServiceDays.value.add(`${currentServicio.value}_${day}`)
+    // Current is Absent or Unevaluated -> Make Present (Create the row)
+    nextStatus = 1
+    attendanceMap.value[key] = 1
+    evaluatedServiceDays.value.add(`${srv}_${day}`) // Force day to be evaluated
   }
   
   processAnalytics() 
@@ -351,7 +346,7 @@ const toggleAttendance = async (stu, day) => {
 
   try {
     await axios.post('https://bot.casitaapps.com/record-attendance', {
-      matricula: stu.matricula, servicio: currentServicio.value, status: next === undefined ? -1 : next, targetDate: dateStr
+      matricula: stu.matricula, servicio: srv, status: nextStatus, targetDate: dateStr
     })
   } catch(e) {
     Swal.fire({toast:true, position:'top', icon:'error', title:'Error sync', showConfirmButton:false, timer:2000})
@@ -373,17 +368,10 @@ const getColorClassBg = (r) => { if(r === 0) return 'bg-secondary opacity-25'; i
 
 const getCellClass = (mat, day) => {
   if (isFutureDate(day)) return 'bg-light cell-disabled opacity-50'
-  const rawStatus = attendanceMap.value[`${mat}_${currentServicio.value}_${day}`]
-  const isServiceEvaluatedToday = evaluatedServiceDays.value.has(`${currentServicio.value}_${day}`)
-  
-  let effectiveStatus = rawStatus
-  if (effectiveStatus === undefined && isServiceEvaluatedToday) {
-    effectiveStatus = 0
-  }
-
-  if (effectiveStatus === 1) return 'bg-success bg-opacity-25'
-  if (effectiveStatus === 0) return 'bg-danger bg-opacity-25'
-  return 'bg-white'
+  const state = getCellState(mat, currentServicio.value, day)
+  if (state === 1) return 'bg-success bg-opacity-25'
+  if (state === 0) return 'bg-danger bg-opacity-25'
+  return 'bg-white' // state === -1 (Sin evaluar)
 }
 
 const exportCSV = () => {

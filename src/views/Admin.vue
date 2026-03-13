@@ -667,7 +667,6 @@ const addStudentDialog = (student) => {
 const submitAddStudent = async (student, eventual, notas) => {
   loading.value = true
   try {
-    // IMPORTANT: Pointing Add to matricula.casitaapps.com
     await axios.post('https://matricula.casitaapps.com/add-student', { plantel: plantel.value, servicio: servicio.value, matricula: student.matricula, eventual, notas })
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Agregado', showConfirmButton: false, timer: 2000 })
     fetchData()
@@ -683,7 +682,6 @@ const removeStudent = async (matricula) => {
 
   loading.value = true
   try {
-    // IMPORTANT: Pointing Remove to matricula.casitaapps.com
     await axios.post('https://matricula.casitaapps.com/remove-student', { servicio: servicio.value, matricula })
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000 })
     fetchData()

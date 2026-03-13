@@ -236,7 +236,6 @@ const performSearch = async () => {
   }
   isSearching.value = true;
   try {
-    // Calling the new efficient search endpoint on matricula
     const res = await axios.get(`https://matricula.casitaapps.com/api/students/search?q=${encodeURIComponent(searchText.value)}`);
     searchResults.value = res.data;
   } catch (e) {
@@ -283,7 +282,6 @@ const selectStudent = async (stu) => {
 const loadDashboard = async (matricula) => {
   loading.value = true;
   try {
-    // Calling the new efficient dashboard endpoint on matricula
     const res = await axios.get(`https://matricula.casitaapps.com/api/students/${matricula}/dashboard`);
     dashboardData.value = res.data;
   } catch (e) {

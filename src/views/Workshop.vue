@@ -493,8 +493,6 @@ const normaliseDateStr = (raw) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size))
-
 // ─── General State ────────────────────────────────────────────────────────────
 
 const loading    = ref(false)
@@ -965,7 +963,6 @@ const openWorkshop = async (shortcut) => {
     studentsList.value = applySortOrder(JSON.parse(cachedData))
     syncing.value = true
     
-    // Original working read behavior
     await fetchAttendance()
     fetchTimeline()
   } else {
@@ -1057,7 +1054,6 @@ const filteredStudents = computed(() => {
 
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
-// Original working read behavior
 const fetchAttendance = async () => {
   if (studentsList.value.length === 0) return
   const payload = studentsList.value.map(s => ({ matricula: s.matricula, servicio: currentWorkshop.value.servicio }))
@@ -1097,23 +1093,13 @@ const toggleSelectAll = () => {
   allSelected.value = !allSelected.value
 }
 
-// Replaced bulk insertion with explicit 1s insertion for ONLY present students
 const recordSelectedAttendance = async () => {
   loading.value = true
   try {
-    const todayStr = getLocalTodayStr()
-    const promises = selectedForAttendance.value.map(mat => {
-      return axios.post('https://bot.casitaapps.com/record-attendance', {
-        matricula: mat,
-        servicio: currentWorkshop.value.servicio,
-        status: 1, // FORCE Explicit Presence overrides DB defaults
-        targetDate: todayStr
-      }).catch(() => null)
+    await axios.post('https://bot.casitaapps.com/record-attendance-bulk', {
+      matriculas: selectedForAttendance.value,
+      servicio:   currentWorkshop.value.servicio
     })
-
-    for (const chunk of chunkArray(promises, 10)) {
-        await Promise.all(chunk)
-    }
 
     if (isMealService.value) {
       await triggerParentNotifications(selectedForAttendance.value)

@@ -185,13 +185,6 @@ const selectedStudents = ref([])
 
 const currentTheme = computed(() => getPlantelTheme(plantel.value))
 
-const getLocalTodayStr = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size))
-
 // Date Utilities
 const timeAgo = (dateStr) => {
   if (!dateStr) return null;
@@ -296,7 +289,6 @@ watch(filteredStudents, (newVal) => {
   }
 })
 
-// Original working read behavior
 const fetchAttendanceForFiltered = async () => {
   if (filteredStudents.value.length === 0) return
   const payload = filteredStudents.value.map(s => ({ matricula: s.matricula, servicio: selectedServicio.value || s.servicios[0] }))
@@ -326,36 +318,21 @@ const toggleSelection = (mat) => {
   else selectedStudents.value.push(mat)
 }
 
-// Replaced bulk insertion with explicit 1s insertion for ONLY present students
 const recordSelectedAttendance = async () => {
   loading.value = true
+  const payload = selectedStudents.value.map(mat => {
+    const s = students.value.find(x => x.matricula === mat)
+    return { matricula: mat, servicio: selectedServicio.value || s.servicios[0] }
+  })
   try {
-    const todayStr = getLocalTodayStr()
-    
-    const promises = selectedStudents.value.map(mat => {
-      const s = students.value.find(x => x.matricula === mat)
-      return axios.post('https://bot.casitaapps.com/record-attendance', {
-        matricula: mat,
-        servicio: selectedServicio.value || s.servicios[0],
-        status: 1, // Explicit presence overrides DB defaults
-        targetDate: todayStr
-      }).catch(e => null)
-    })
-
-    for (const chunk of chunkArray(promises, 10)) {
-        await Promise.all(chunk)
-    }
-
+    await axios.post('https://bot.casitaapps.com/record-attendance-bulk-per-student', { students: payload })
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asistencia registrada', showConfirmButton: false, timer: 2000 })
     selectedStudents.value = []
     fetchAttendanceForFiltered()
-  } catch (e) { 
-    Swal.fire('Error', 'Fallo al registrar asistencia', 'error') 
-  }
+  } catch (e) { Swal.fire('Error', 'Fallo al registrar asistencia', 'error') }
   finally { loading.value = false }
 }
 
-// Original working read behavior
 const hasAttendedToday = (stu) => {
   const todayStr = String(new Date().getDate())
   const key = `${stu.matricula}-${selectedServicio.value || stu.servicios[0]}`
