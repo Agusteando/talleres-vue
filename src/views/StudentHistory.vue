@@ -203,6 +203,7 @@
 import { ref } from 'vue'
 import axios from 'axios'
 import { logger } from '../utils/logger'
+import { allServiciosList } from '../utils/theme'
 
 const loading = ref(false)
 const searchText = ref('')
@@ -254,11 +255,13 @@ const fallbackSearch = async () => {
       const flatList = [];
       for (const [p, sObj] of Object.entries(res.data)) {
         for (const [s, list] of Object.entries(sObj)) {
-          list.forEach(stu => {
-            if (!flatList.find(x => x.matricula === stu.matricula)) {
-              flatList.push({ ...stu, plantel: p });
-            }
-          });
+          if (allServiciosList.includes(s.toUpperCase())) {
+            list.forEach(stu => {
+              if (!flatList.find(x => x.matricula === stu.matricula)) {
+                flatList.push({ ...stu, plantel: p });
+              }
+            });
+          }
         }
       }
       studentsDataCache.value = flatList;
@@ -283,7 +286,19 @@ const loadDashboard = async (matricula) => {
   loading.value = true;
   try {
     const res = await axios.get(`https://matricula.casitaapps.com/api/students/${matricula}/dashboard`);
-    dashboardData.value = res.data;
+    const data = res.data;
+    if (data.workshops) {
+      if (data.workshops.current) {
+        data.workshops.current = data.workshops.current.filter(srv => allServiciosList.includes(srv.toUpperCase()));
+      }
+      if (data.workshops.history) {
+        data.workshops.history = data.workshops.history.filter(h => allServiciosList.includes(h.servicio_label.toUpperCase()));
+      }
+    }
+    if (data.attendance) {
+      data.attendance = data.attendance.filter(a => allServiciosList.includes(a.servicio.toUpperCase()));
+    }
+    dashboardData.value = data;
   } catch (e) {
     logger.warn('New dashboard API unavailable, reconstructing payload using existing endpoints', e);
     await fallbackLoadDashboard(matricula);
@@ -305,7 +320,8 @@ const fallbackLoadDashboard = async (matricula) => {
   let timeline = [];
   try {
     const resTl = await axios.post('https://bot.casitaapps.com/api/talleres/timeline/bulk', { matriculas: [matricula] });
-    timeline = resTl.data?.data[matricula]?.history || [];
+    let rawHistory = resTl.data?.data[matricula]?.history || [];
+    timeline = rawHistory.filter(h => allServiciosList.includes(h.servicio_label.toUpperCase()));
   } catch(e) {}
   
   const activeWorkshops = timeline.filter(t => t.active).map(t => t.servicio_label);
@@ -319,9 +335,11 @@ const fallbackLoadDashboard = async (matricula) => {
       for (const key in map) {
         const parts = key.split('-');
         const srv = parts[1];
-        map[key].forEach(day => {
-          attendance.push({ date: `Día ${day} (Mes actual)`, servicio: srv, status: 1 });
-        });
+        if (allServiciosList.includes(srv.toUpperCase())) {
+          map[key].forEach(day => {
+            attendance.push({ date: `Día ${day} (Mes actual)`, servicio: srv, status: 1 });
+          });
+        }
       }
     } catch(e) {}
   }

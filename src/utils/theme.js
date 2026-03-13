@@ -1,3 +1,12 @@
+export const allServiciosList = [
+  "DESAYUNO", "COMIDA", "CENA", "BIBERÓN", "PAPILLA", "FÚTBOL", "TAE KWON DO", "BE AN ARTIST",
+  "JAZZ", "BALLET", "DANZA ÁRABE", "ENSAMBLE MUSICAL", "TENNIS", "BASQUETBOL", "TOCHO BANDERA",
+  "TECLADO", "TEATRO MUSICAL", "AJEDREZ", "VOLEIBOL", "GIMNASIA", "TE 0.5H", "TE 1H", "TE 1.5H",
+  "TE 2H", "TE 2.5H", "TE 3H", "TE 3.5H", "TE 4H", "CLUB DE TAREAS", "DISEÑO GRÁFICO", "HUSKY BAND",
+  "ROBÓTICA", "AJEDREZ (4 DÍAS)", "BE AN ARTIST (4 DÍAS)", "JAZZ REPRESENTATIVO (4 DÍAS)",
+  "TRANSPORTE REDONDO R1", "TRANSPORTE REDONDO R2", "TRANSPORTE SENCILLO R1", "TRANSPORTE SENCILLO R2", "TRANSPORTE SENCILLO R3", "INGLÉS", "FRANCÉS", "CATECISMO"
+];
+
 export const getPlantelTheme = (plantel) => {
   const themes = {
     'PM': { color: '#2563eb', icon: 'fa-school', name: 'Primaria Metepec', gradient: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' },

@@ -398,7 +398,7 @@ import axios from 'axios'
 import Swal from 'sweetalert2'
 import { exportToExcel, base64ToFile } from '../utils/export'
 import { logger } from '../utils/logger'
-import { getPlantelTheme, getServiceIcon } from '../utils/theme'
+import { getPlantelTheme, getServiceIcon, allServiciosList } from '../utils/theme'
 
 const route = useRoute()
 const router = useRouter()
@@ -425,14 +425,6 @@ const viewingTimelineStu = ref(null)
 
 // Constants
 const allowedPlanteles = ["PREET", "PREEM", "PT", "PM", "ST", "SM", "ISM", "DM", "CM", "CT"]
-const allServiciosList = [
-    "DESAYUNO", "COMIDA", "CENA", "BIBERÓN", "PAPILLA", "FÚTBOL", "TAE KWON DO", "BE AN ARTIST",
-    "JAZZ", "BALLET", "DANZA ÁRABE", "ENSAMBLE MUSICAL", "TENNIS", "BASQUETBOL", "TOCHO BANDERA",
-    "TECLADO", "TEATRO MUSICAL", "AJEDREZ", "VOLEIBOL", "GIMNASIA", "TE 0.5H", "TE 1H", "TE 1.5H",
-    "TE 2H", "TE 2.5H", "TE 3H", "TE 3.5H", "TE 4H", "CLUB DE TAREAS", "DISEÑO GRÁFICO", "HUSKY BAND",
-    "ROBÓTICA", "AJEDREZ (4 DÍAS)", "BE AN ARTIST (4 DÍAS)", "JAZZ REPRESENTATIVO (4 DÍAS)",
-    "TRANSPORTE REDONDO R1", "TRANSPORTE REDONDO R2", "TRANSPORTE SENCILLO R1", "TRANSPORTE SENCILLO R2", "TRANSPORTE SENCILLO R3", "INGLÉS", "FRANCÉS", "CATECISMO"
-]
 
 // Computed Props
 const currentTheme = computed(() => getPlantelTheme(plantel.value))
@@ -553,9 +545,19 @@ const fetchData = async () => {
   try {
     logger.api(`Fetching roster for ${plantel.value}`);
     const res = await axios.get(`https://matricula.casitaapps.com/fetch-servicios-data?plantel=${plantel.value}`)
-    globalData.value = res.data
     
-    const all = Object.values(res.data[plantel.value] || {}).flat().filter(s => s)
+    const cleanedData = {};
+    if (res.data[plantel.value]) {
+      cleanedData[plantel.value] = {};
+      for (const [srv, list] of Object.entries(res.data[plantel.value])) {
+        if (allServiciosList.includes(srv.toUpperCase())) {
+          cleanedData[plantel.value][srv] = list;
+        }
+      }
+    }
+    globalData.value = cleanedData;
+    
+    const all = Object.values(cleanedData[plantel.value] || {}).flat().filter(s => s)
     allStudentsList.value = Array.from(new Map(all.map(s => [s.matricula, s])).values())
 
     if (servicio.value) {
@@ -594,7 +596,13 @@ const fetchTimeline = async () => {
       servicio: servicio.value,
       matriculas
     });
-    timelineData.value = res.data?.data || {};
+    const data = res.data?.data || {};
+    for (const mat in data) {
+      if (data[mat].history) {
+        data[mat].history = data[mat].history.filter(h => allServiciosList.includes(h.servicio_label.toUpperCase()));
+      }
+    }
+    timelineData.value = data;
   } catch(e) {
     logger.error("Timeline bulk fetch gracefully failed or missing endpoint", e);
     timelineData.value = {}; 

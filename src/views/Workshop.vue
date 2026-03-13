@@ -470,7 +470,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import Swal from 'sweetalert2'
 import { logger } from '../utils/logger'
-import { getPlantelTheme, getServiceIcon } from '../utils/theme'
+import { getPlantelTheme, getServiceIcon, allServiciosList } from '../utils/theme'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
@@ -774,7 +774,9 @@ const fetchServicesForAdd = async () => {
   try {
     const res = await axios.get(`https://matricula.casitaapps.com/fetch-servicios-data?plantel=${newShortcutPlantel.value}`)
     if (res.data && res.data[newShortcutPlantel.value]) {
-      availableServicesForAdd.value = Object.keys(res.data[newShortcutPlantel.value]).sort()
+      availableServicesForAdd.value = Object.keys(res.data[newShortcutPlantel.value])
+         .filter(s => allServiciosList.includes(s.toUpperCase()))
+         .sort()
     } else {
       availableServicesForAdd.value = []
     }
@@ -1020,7 +1022,13 @@ const fetchTimeline = async () => {
       servicio:  currentWorkshop.value.servicio,
       matriculas
     })
-    timelineData.value = res.data?.data || {}
+    const data = res.data?.data || {}
+    for (const mat in data) {
+      if (data[mat].history) {
+        data[mat].history = data[mat].history.filter(h => allServiciosList.includes(h.servicio_label.toUpperCase()));
+      }
+    }
+    timelineData.value = data
   } catch (e) {
     logger.warn('Timeline fetch failed', e)
   }

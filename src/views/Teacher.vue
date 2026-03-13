@@ -163,7 +163,7 @@ import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 import Swal from 'sweetalert2'
 import { logger } from '../utils/logger'
-import { getPlantelTheme } from '../utils/theme'
+import { getPlantelTheme, allServiciosList } from '../utils/theme'
 
 const loading = ref(false)
 const planteles = ['PM', 'PT', 'SM', 'ST', 'PREET', 'PREEM','CM','CT','DM','ISM']
@@ -249,9 +249,11 @@ const fetchData = async () => {
     const srvSet = new Set()
 
     Object.values(res.data[plantel.value] || {}).flat().forEach(s => {
-      if (!studentMap[s.matricula]) studentMap[s.matricula] = { ...s, servicios: [s.servicio] }
-      else if (!studentMap[s.matricula].servicios.includes(s.servicio)) studentMap[s.matricula].servicios.push(s.servicio)
-      if (s.servicio && s.servicio !== 'Sin asignar') srvSet.add(s.servicio)
+      if (s.servicio && allServiciosList.includes(s.servicio.toUpperCase())) {
+        if (!studentMap[s.matricula]) studentMap[s.matricula] = { ...s, servicios: [s.servicio] }
+        else if (!studentMap[s.matricula].servicios.includes(s.servicio)) studentMap[s.matricula].servicios.push(s.servicio)
+        srvSet.add(s.servicio)
+      }
     })
 
     students.value = Object.values(studentMap)
@@ -306,7 +308,13 @@ const fetchTimelineForFiltered = async () => {
       plantel: plantel.value,
       matriculas
     });
-    timelineData.value = res.data?.data || {};
+    const data = res.data?.data || {};
+    for (const mat in data) {
+      if (data[mat].history) {
+        data[mat].history = data[mat].history.filter(h => allServiciosList.includes(h.servicio_label.toUpperCase()));
+      }
+    }
+    timelineData.value = data;
   } catch(e) {
     logger.error("Timeline bulk fetch gracefully failed", e);
   }
