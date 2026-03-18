@@ -239,13 +239,13 @@
     <!-- ========================================== -->
     <transition name="slide-up">
       <div v-if="selectedForAttendance.length > 0 && !sortMode" class="position-fixed bottom-0 start-0 w-100 p-3 z-top" style="pointer-events: none;">
-        <div class="mx-auto bg-white rounded-pill shadow-lg border p-2 d-flex align-items-center justify-content-between gap-2" style="max-width: 600px; pointer-events: auto;">
+        <div class="mx-auto bg-white rounded-pill shadow-lg border p-2 d-flex align-items-center justify-content-between gap-2 flex-wrap" style="max-width: 700px; pointer-events: auto;">
           <div class="d-flex align-items-center ms-2 flex-shrink-0">
             <span class="badge bg-primary rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width:30px; height:30px; font-size: 0.9rem;">{{ selectedForAttendance.length }}</span>
             <span class="fw-bold text-dark d-none d-sm-inline">Seleccionados</span>
           </div>
           
-          <div class="d-flex gap-2 flex-grow-1 justify-content-end">
+          <div class="d-flex gap-2 flex-grow-1 justify-content-end flex-wrap">
             <button v-if="activeGrupo" class="btn btn-light text-danger rounded-pill fw-bold border shadow-sm px-3 hover-scale" @click="removeFromGrupo">
               <i class="fas fa-user-minus"></i> <span class="d-none d-md-inline ms-1">Quitar</span>
             </button>
@@ -255,7 +255,10 @@
             <button class="btn btn-success rounded-pill fw-bold shadow-sm px-3 hover-scale" @click="recordSelectedAttendance">
               <i class="fas fa-check"></i> <span class="d-none d-sm-inline ms-1">Asistencia</span>
             </button>
-            <button class="btn btn-light text-danger rounded-circle shadow-sm border" style="width: 40px; height: 40px;" @click="clearSelection" title="Cancelar selección">
+            <button v-if="isMealService" class="btn btn-info text-white rounded-pill fw-bold shadow-sm px-3 hover-scale" @click="resendSelectedEmails">
+              <i class="fas fa-envelope"></i> <span class="d-none d-sm-inline ms-1">Correos</span>
+            </button>
+            <button class="btn btn-light text-danger rounded-circle shadow-sm border flex-shrink-0" style="width: 40px; height: 40px;" @click="clearSelection" title="Cancelar selección">
               <i class="fas fa-times"></i>
             </button>
           </div>
@@ -1060,7 +1063,7 @@ const filteredStudents = computed(() => {
   return applySortOrder(list)
 })
 
-// ─── Attendance ───────────────────────────────────────────────────────────────
+// ─── Attendance & Parent Notifications ────────────────────────────────────────
 
 const fetchAttendance = async () => {
   if (studentsList.value.length === 0) return
@@ -1101,30 +1104,33 @@ const toggleSelectAll = () => {
   allSelected.value = !allSelected.value
 }
 
-const recordSelectedAttendance = async () => {
-  loading.value = true
-  try {
-    await axios.post('https://bot.casitaapps.com/record-attendance-bulk', {
-      matriculas: selectedForAttendance.value,
-      servicio:   currentWorkshop.value.servicio
-    })
-
-    if (isMealService.value) {
-      await triggerParentNotifications(selectedForAttendance.value)
+const triggerParentNotifications = async (matriculasIds, isResend = false) => {
+  // Pre-checks
+  if (!todayMenu.value) {
+    if (!isResend) {
+      Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Asistencia Guardada (Sin menú)', showConfirmButton: false, timer: 3000 });
     } else {
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asistencia Guardada', showConfirmButton: false, timer: 2000 })
+      Swal.fire('Sin Menú', 'No puedes enviar correos porque no hay menú asignado para hoy.', 'warning');
     }
-
-    clearSelection()
-    await fetchAttendance()
-  } catch (e) {
-    Swal.fire('Error', 'No se guardó asistencia', 'error')
-  } finally {
-    loading.value = false
+    return;
   }
-}
 
-const triggerParentNotifications = async (matriculasIds) => {
+  // Check config
+  try {
+    const cfgRes = await axios.get('https://matricula.casitaapps.com/api/plantel-configs');
+    const cfg = cfgRes.data[currentWorkshop.value.plantel];
+    if (!cfg || !cfg.isActive || !cfg.senderEmail) {
+      if (!isResend) {
+        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Asistencia Guardada (Correos pausados)', showConfirmButton: false, timer: 4000 });
+      } else {
+        Swal.fire('Configuración Pausada', 'El envío de correos está pausado o incompleto en Configuración de Planteles.', 'warning');
+      }
+      return;
+    }
+  } catch(e) {
+    logger.warn('Could not verify plantel config. Proceeding with send attempt.', e);
+  }
+
   const studentsToNotify = matriculasIds.map(m => {
     const s = studentsList.value.find(x => x.matricula === m)
     return { matricula: m, nombreCompleto: s ? s.nombreCompleto : m }
@@ -1135,31 +1141,122 @@ const triggerParentNotifications = async (matriculasIds) => {
       students: studentsToNotify,
       servicio: currentWorkshop.value.servicio,
       plantel:  currentWorkshop.value.plantel,
-      date:     getLocalTodayStr()
+      date:     getLocalTodayStr(),
+      isResend: isResend
     })
 
-    if (res.data.sentCount > 0) {
-      Swal.fire('Asistencia y Notificación', `Se guardó asistencia y se enviaron ${res.data.sentCount} correos.`, 'success')
+    const data = res.data || {};
+    const sentCount = data.sentCount || 0;
+    const skippedCount = data.skippedCount || 0;
+    const errors = data.errors || [];
+    const results = data.results || [];
+
+    let html = `<div class="text-start" style="font-size: 0.9rem;">`;
+    html += `<p class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> <strong>Correos enviados:</strong> ${sentCount}</p>`;
+    html += `<p class="mb-2"><i class="fas fa-info-circle text-warning me-2"></i> <strong>Omitidos (ya enviados):</strong> ${skippedCount}</p>`;
+    
+    const missingEmails = results.filter(r => r.status === 'missing_email' || (r.error && r.error.toLowerCase().includes('email')));
+    if (missingEmails.length > 0) {
+      html += `<p class="mt-3 mb-1 fw-bold text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Sin correo registrado (${missingEmails.length}):</p><ul class="text-muted ps-3 mb-2" style="max-height: 100px; overflow-y: auto;">`;
+      missingEmails.forEach(m => {
+        html += `<li>${m.nombreCompleto || m.matricula}</li>`;
+      });
+      html += `</ul>`;
+    }
+
+    if (errors.length > 0 && errors.length !== missingEmails.length) {
+      const otherErrors = errors.filter(e => !missingEmails.find(m => m.matricula === e.matricula));
+      if (otherErrors.length > 0) {
+        html += `<p class="mt-3 mb-1 fw-bold text-danger">Otros errores (${otherErrors.length}):</p><ul class="text-danger ps-3 mb-2" style="max-height: 100px; overflow-y: auto;">`;
+        otherErrors.forEach(err => {
+          html += `<li>${err.matricula}: ${err.error}</li>`;
+        });
+        html += `</ul>`;
+      }
+    }
+    html += `</div>`;
+
+    if (isResend) {
+      Swal.fire({
+        title: 'Resultados de Reenvío',
+        html: html,
+        icon: sentCount > 0 ? 'success' : (errors.length > 0 ? 'warning' : 'info')
+      })
     } else {
-      Swal.fire('Asistencia Guardada', `Asistencia registrada. (${res.data.message})`, 'success')
+      Swal.fire({
+        title: 'Asistencia y Correos',
+        html: html,
+        icon: 'success'
+      })
     }
   } catch (e) {
     logger.error('Failed to notify parents', e)
+    const errorDetails = e.response?.data?.error || e.message || 'Error desconocido';
     Swal.fire({
-      title: 'Notificaciones Fallidas',
-      text: 'La asistencia se guardó correctamente, pero el envío de correos falló. Puedes reintentar enviar los correos.',
-      icon: 'warning',
+      title: 'Fallo al Enviar Correos',
+      html: `<p>La asistencia se guardó correctamente, pero ocurrió un error al intentar enviar los correos.</p><p class="text-danger small bg-light p-2 rounded">Detalle: ${errorDetails}</p><p>¿Deseas reintentar el envío?</p>`,
+      icon: 'error',
       showCancelButton: true,
-      confirmButtonText: 'Reintentar',
-      cancelButtonText: 'No enviar'
+      confirmButtonText: 'Reintentar Ahora',
+      cancelButtonText: 'Más Tarde'
     }).then(result => {
       if (result.isConfirmed) {
         loading.value = true
-        triggerParentNotifications(matriculasIds).finally(() => { loading.value = false })
+        triggerParentNotifications(matriculasIds, isResend).finally(() => { loading.value = false })
       }
     })
   }
 }
+
+const recordSelectedAttendance = async () => {
+  loading.value = true
+  try {
+    // Phase 1: Persistence
+    logger.info('Phase 1: Recording attendance locally/backend', selectedForAttendance.value);
+    await axios.post('https://bot.casitaapps.com/record-attendance-bulk', {
+      matriculas: selectedForAttendance.value,
+      servicio:   currentWorkshop.value.servicio
+    })
+
+    // Phase 2: Delivery
+    if (isMealService.value) {
+      logger.info('Phase 2: Triggering parent notifications');
+      await triggerParentNotifications(selectedForAttendance.value, false)
+    } else {
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Asistencia Guardada', showConfirmButton: false, timer: 2000 })
+    }
+
+    clearSelection()
+    await fetchAttendance()
+  } catch (e) {
+    logger.error('Failed to record attendance in Phase 1', e);
+    Swal.fire('Error', 'No se guardó asistencia. Revisa tu conexión.', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+const resendSelectedEmails = async () => {
+  const unattended = selectedForAttendance.value.filter(mat => !hasAttendedToday(mat));
+  if (unattended.length > 0) {
+    const conf = await Swal.fire({
+      title: 'Alumnos sin asistencia',
+      text: `Seleccionaste ${unattended.length} alumno(s) sin asistencia hoy. ¿Deseas registrar su asistencia y enviar los correos?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, registrar y enviar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#10b981'
+    });
+    if (!conf.isConfirmed) return;
+    return recordSelectedAttendance();
+  }
+
+  loading.value = true;
+  await triggerParentNotifications(selectedForAttendance.value, true);
+  clearSelection();
+  loading.value = false;
+};
 
 // ─── Sort Mode ────────────────────────────────────────────────────────────────
 
