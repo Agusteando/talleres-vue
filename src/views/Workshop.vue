@@ -1104,8 +1104,8 @@ const toggleSelectAll = () => {
   allSelected.value = !allSelected.value
 }
 
+// Rewritten to directly interface with your new standalone /api/sendEmail endpoint on a per-student basis.
 const triggerParentNotifications = async (matriculasIds, isResend = false) => {
-  // Pre-checks
   if (!todayMenu.value) {
     if (!isResend) {
       Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Asistencia Guardada (Sin menú)', showConfirmButton: false, timer: 3000 });
@@ -1116,7 +1116,6 @@ const triggerParentNotifications = async (matriculasIds, isResend = false) => {
   }
 
   let cfg = null;
-  // Check config
   try {
     const cfgRes = await axios.get('https://matricula.casitaapps.com/api/plantel-configs');
     cfg = cfgRes.data[currentWorkshop.value.plantel];
@@ -1128,111 +1127,129 @@ const triggerParentNotifications = async (matriculasIds, isResend = false) => {
       }
       return;
     }
-  } catch(e) {
+  } catch (e) {
     logger.warn('Could not verify plantel config. Proceeding with send attempt.', e);
   }
 
-  const studentsToNotify = matriculasIds.map(m => {
-    // Send full student object to ensure the backend has all the data it might need
-    const s = studentsList.value.find(x => x.matricula === m)
-    return s ? s : { matricula: m, nombreCompleto: m }
-  })
+  // Filter out any students that somehow don't exist in our frontend mapping
+  const studentsToNotify = matriculasIds.map(m => studentsList.value.find(x => x.matricula === m)).filter(Boolean);
 
-  try {
-    const payload = {
-      students: studentsToNotify,
-      servicio: currentWorkshop.value.servicio,
-      plantel:  currentWorkshop.value.plantel,
-      date:     getLocalTodayStr(),
-      isResend: isResend,
-      config:   cfg,             // Sent to allow the backend to configure the Gmail Client properly
-      menu:     todayMenu.value  // Send the actual menu details
-    };
+  let sentCount = 0;
+  let skippedCount = 0;
+  const errors = [];
+  const missingEmails = [];
 
-    // Forward GCP environment variables dynamically
-    let gcpClientEmail = undefined;
-    let gcpPrivateKey = undefined;
+  // Idempotency: Keep a localized tracker to prevent duplicate emails if the teacher spam-clicks attendance
+  const todayStr = getLocalTodayStr();
+  const trackingKey = `emailed_${currentWorkshop.value.plantel}_${todayStr}`;
+  let alreadyEmailedToday = JSON.parse(localStorage.getItem(trackingKey) || '[]');
 
-    // 1. Try checking Vite/Snowpack meta environment
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      gcpClientEmail = import.meta.env.GOOGLE_CLIENT_EMAIL || import.meta.env.VITE_GOOGLE_CLIENT_EMAIL || import.meta.env.VITE_GCP_CLIENT_EMAIL;
-      gcpPrivateKey = import.meta.env.GOOGLE_PRIVATE_KEY || import.meta.env.VITE_GOOGLE_PRIVATE_KEY || import.meta.env.VITE_GCP_PRIVATE_KEY;
-    }
+  // Grab the API key for the new endpoint if setup in your Vite env
+  const apiKey = import.meta.env?.VITE_API_KEY || '';
+
+  // Process all individual email requests
+  await Promise.all(studentsToNotify.map(async (stu) => {
     
-    // 2. Try checking Webpack/Node process environment as fallback
-    if (!gcpClientEmail && typeof process !== 'undefined' && process.env) {
-      gcpClientEmail = process.env.GOOGLE_CLIENT_EMAIL || process.env.VITE_GOOGLE_CLIENT_EMAIL || process.env.VITE_GCP_CLIENT_EMAIL;
-      gcpPrivateKey = process.env.GOOGLE_PRIVATE_KEY || process.env.VITE_GOOGLE_PRIVATE_KEY || process.env.VITE_GCP_PRIVATE_KEY;
+    // Automatically skip if we already emailed them today from this device, UNLESS we explicitly clicked "Resend Emails"
+    if (!isResend && alreadyEmailedToday.includes(stu.matricula)) {
+      skippedCount++;
+      return;
     }
 
-    // 3. Apply to payload if found, and crucially format the private key
-    if (gcpClientEmail) {
-      payload.gcp_client_email = gcpClientEmail;
-      // Many times private keys pass literal \n instead of true newlines causing the Auth library to reject it.
-      payload.gcp_private_key = gcpPrivateKey ? String(gcpPrivateKey).replace(/\\n/g, '\n') : '';
+    // Try all conventional keys where the backend might have mapped the parent email
+    const parentEmail = stu.correo || stu.email || stu.correo_padre || stu.email_padre || stu.correo_tutor;
+
+    if (!parentEmail) {
+      missingEmails.push(stu);
+      return;
     }
 
-    const res = await axios.post('https://matricula.casitaapps.com/api/meal-menus/notify-parents', payload)
-
-    const data = res.data || {};
-    const sentCount = data.sentCount || 0;
-    const skippedCount = data.skippedCount || 0;
-    const errors = data.errors || [];
-    const results = data.results || [];
-
-    let html = `<div class="text-start" style="font-size: 0.9rem;">`;
-    html += `<p class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> <strong>Correos enviados:</strong> ${sentCount}</p>`;
-    html += `<p class="mb-2"><i class="fas fa-info-circle text-warning me-2"></i> <strong>Omitidos (ya enviados):</strong> ${skippedCount}</p>`;
+    // Construct the email payload
+    const subject = `Asistencia Comedor: ${stu.nombreCompleto}`;
     
-    const missingEmails = results.filter(r => r.status === 'missing_email' || (r.error && r.error.toLowerCase().includes('email')));
-    if (missingEmails.length > 0) {
-      html += `<p class="mt-3 mb-1 fw-bold text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Sin correo registrado (${missingEmails.length}):</p><ul class="text-muted ps-3 mb-2" style="max-height: 100px; overflow-y: auto;">`;
-      missingEmails.forEach(m => {
-        html += `<li>${m.nombreCompleto || m.matricula}</li>`;
+    // Beautiful HTML formatting replacing your old backend's EJS template
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: #f3f4f6; padding: 16px; text-align: center; border-bottom: 1px solid #e5e7eb;">
+           <h2 style="margin: 0; color: #1f2937;">Notificación de ${currentWorkshop.value.servicio}</h2>
+           <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">${currentWorkshop.value.plantel}</p>
+        </div>
+        <div style="padding: 24px;">
+           <p style="font-size: 16px;">Estimado padre de familia,</p>
+           <p style="font-size: 16px;">Le informamos que el alumno <strong>${stu.nombreCompleto}</strong> ha registrado su asistencia en el servicio de comedor el día de hoy.</p>
+           
+           <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 8px; padding: 16px; margin-top: 24px;">
+              <h3 style="margin-top: 0; color: #ca8a04; font-size: 18px;">🍽️ Menú del Día: ${todayMenu.value.title}</h3>
+              <p style="color: #854d0e; font-size: 14px; margin-bottom: 0;">${todayMenu.value.description || 'Sin descripción detallada.'}</p>
+              ${todayMenu.value.image_url ? `<div style="margin-top: 16px; text-align: center;"><img src="${todayMenu.value.image_url}" alt="Menú" style="max-width: 100%; border-radius: 8px; max-height: 250px; object-fit: cover;" /></div>` : ''}
+           </div>
+        </div>
+        <div style="background-color: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af;">
+           Este es un mensaje automático del Sistema de Comedor. Para cualquier duda, responda a este correo.
+        </div>
+      </div>
+    `;
+
+    try {
+      await axios.post('https://matricula.casitaapps.com/api/sendEmail', {
+        to: parentEmail,
+        subject: subject,
+        html: htmlContent,
+        fromEmail: cfg.senderEmail,
+        fromName: cfg.senderName || `Comedor ${currentWorkshop.value.plantel}`,
+        replyTo: cfg.senderEmail
+      }, {
+        headers: apiKey ? { 'x-api-key': apiKey } : {}
       });
-      html += `</ul>`;
-    }
-
-    if (errors.length > 0 && errors.length !== missingEmails.length) {
-      const otherErrors = errors.filter(e => !missingEmails.find(m => m.matricula === e.matricula));
-      if (otherErrors.length > 0) {
-        html += `<p class="mt-3 mb-1 fw-bold text-danger">Otros errores (${otherErrors.length}):</p><ul class="text-danger ps-3 mb-2" style="max-height: 100px; overflow-y: auto;">`;
-        otherErrors.forEach(err => {
-          html += `<li>${err.matricula}: ${err.error}</li>`;
-        });
-        html += `</ul>`;
+      
+      sentCount++;
+      // Mark as emailed today successfully
+      if (!alreadyEmailedToday.includes(stu.matricula)) {
+        alreadyEmailedToday.push(stu.matricula);
       }
+    } catch (e) {
+      errors.push({ matricula: stu.matricula, error: e.response?.data?.error || e.message });
     }
-    html += `</div>`;
+  }));
 
-    if (isResend) {
-      Swal.fire({
-        title: 'Resultados de Reenvío',
-        html: html,
-        icon: sentCount > 0 ? 'success' : (errors.length > 0 ? 'warning' : 'info')
-      })
-    } else {
-      Swal.fire({
-        title: 'Asistencia y Correos',
-        html: html,
-        icon: 'success'
-      })
-    }
-  } catch (e) {
-    logger.error('Failed to notify parents', e)
-    const errorDetails = e.response?.data?.error || e.message || 'Error desconocido';
+  // Update tracker cache
+  localStorage.setItem(trackingKey, JSON.stringify(alreadyEmailedToday));
+
+  // Visual report generation
+  let html = `<div class="text-start" style="font-size: 0.9rem;">`;
+  html += `<p class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> <strong>Correos enviados:</strong> ${sentCount}</p>`;
+  if (skippedCount > 0) {
+    html += `<p class="mb-2"><i class="fas fa-info-circle text-warning me-2"></i> <strong>Omitidos (ya enviados hoy):</strong> ${skippedCount}</p>`;
+  }
+  
+  if (missingEmails.length > 0) {
+    html += `<p class="mt-3 mb-1 fw-bold text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Sin correo registrado (${missingEmails.length}):</p><ul class="text-muted ps-3 mb-2" style="max-height: 100px; overflow-y: auto;">`;
+    missingEmails.forEach(m => {
+      html += `<li>${m.nombreCompleto || m.matricula}</li>`;
+    });
+    html += `</ul>`;
+  }
+
+  if (errors.length > 0) {
+    html += `<p class="mt-3 mb-1 fw-bold text-danger">Errores al enviar (${errors.length}):</p><ul class="text-danger ps-3 mb-2" style="max-height: 100px; overflow-y: auto;">`;
+    errors.forEach(err => {
+      html += `<li>${err.matricula}: ${err.error}</li>`;
+    });
+    html += `</ul>`;
+  }
+  html += `</div>`;
+
+  if (isResend) {
     Swal.fire({
-      title: 'Fallo al Enviar Correos',
-      html: `<p>La asistencia se guardó correctamente, pero ocurrió un error al intentar enviar los correos.</p><p class="text-danger small bg-light p-2 rounded">Detalle: ${errorDetails}</p><p>¿Deseas reintentar el envío?</p>`,
-      icon: 'error',
-      showCancelButton: true,
-      confirmButtonText: 'Reintentar Ahora',
-      cancelButtonText: 'Más Tarde'
-    }).then(result => {
-      if (result.isConfirmed) {
-        loading.value = true
-        triggerParentNotifications(matriculasIds, isResend).finally(() => { loading.value = false })
-      }
+      title: 'Resultados de Reenvío',
+      html: html,
+      icon: sentCount > 0 ? 'success' : (errors.length > 0 ? 'warning' : 'info')
+    })
+  } else {
+    Swal.fire({
+      title: 'Asistencia y Correos',
+      html: html,
+      icon: 'success'
     })
   }
 }
