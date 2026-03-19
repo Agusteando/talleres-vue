@@ -1149,10 +1149,27 @@ const triggerParentNotifications = async (matriculasIds, isResend = false) => {
       menu:     todayMenu.value  // Send the actual menu details
     };
 
-    // Forward GCP environment variables if set in the frontend, in case the PHP backend dynamically evaluates them.
-    if (import.meta.env.VITE_GCP_CLIENT_EMAIL) {
-      payload.gcp_client_email = import.meta.env.VITE_GCP_CLIENT_EMAIL;
-      payload.gcp_private_key = import.meta.env.VITE_GCP_PRIVATE_KEY;
+    // Forward GCP environment variables dynamically
+    let gcpClientEmail = undefined;
+    let gcpPrivateKey = undefined;
+
+    // 1. Try checking Vite/Snowpack meta environment
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      gcpClientEmail = import.meta.env.GOOGLE_CLIENT_EMAIL || import.meta.env.VITE_GOOGLE_CLIENT_EMAIL || import.meta.env.VITE_GCP_CLIENT_EMAIL;
+      gcpPrivateKey = import.meta.env.GOOGLE_PRIVATE_KEY || import.meta.env.VITE_GOOGLE_PRIVATE_KEY || import.meta.env.VITE_GCP_PRIVATE_KEY;
+    }
+    
+    // 2. Try checking Webpack/Node process environment as fallback
+    if (!gcpClientEmail && typeof process !== 'undefined' && process.env) {
+      gcpClientEmail = process.env.GOOGLE_CLIENT_EMAIL || process.env.VITE_GOOGLE_CLIENT_EMAIL || process.env.VITE_GCP_CLIENT_EMAIL;
+      gcpPrivateKey = process.env.GOOGLE_PRIVATE_KEY || process.env.VITE_GOOGLE_PRIVATE_KEY || process.env.VITE_GCP_PRIVATE_KEY;
+    }
+
+    // 3. Apply to payload if found, and crucially format the private key
+    if (gcpClientEmail) {
+      payload.gcp_client_email = gcpClientEmail;
+      // Many times private keys pass literal \n instead of true newlines causing the Auth library to reject it.
+      payload.gcp_private_key = gcpPrivateKey ? String(gcpPrivateKey).replace(/\\n/g, '\n') : '';
     }
 
     const res = await axios.post('https://matricula.casitaapps.com/api/meal-menus/notify-parents', payload)
