@@ -1115,10 +1115,11 @@ const triggerParentNotifications = async (matriculasIds, isResend = false) => {
     return;
   }
 
+  let cfg = null;
   // Check config
   try {
     const cfgRes = await axios.get('https://matricula.casitaapps.com/api/plantel-configs');
-    const cfg = cfgRes.data[currentWorkshop.value.plantel];
+    cfg = cfgRes.data[currentWorkshop.value.plantel];
     if (!cfg || !cfg.isActive || !cfg.senderEmail) {
       if (!isResend) {
         Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Asistencia Guardada (Correos pausados)', showConfirmButton: false, timer: 4000 });
@@ -1132,18 +1133,29 @@ const triggerParentNotifications = async (matriculasIds, isResend = false) => {
   }
 
   const studentsToNotify = matriculasIds.map(m => {
+    // Send full student object to ensure the backend has all the data it might need
     const s = studentsList.value.find(x => x.matricula === m)
-    return { matricula: m, nombreCompleto: s ? s.nombreCompleto : m }
+    return s ? s : { matricula: m, nombreCompleto: m }
   })
 
   try {
-    const res = await axios.post('https://matricula.casitaapps.com/api/meal-menus/notify-parents', {
+    const payload = {
       students: studentsToNotify,
       servicio: currentWorkshop.value.servicio,
       plantel:  currentWorkshop.value.plantel,
       date:     getLocalTodayStr(),
-      isResend: isResend
-    })
+      isResend: isResend,
+      config:   cfg,             // Sent to allow the backend to configure the Gmail Client properly
+      menu:     todayMenu.value  // Send the actual menu details
+    };
+
+    // Forward GCP environment variables if set in the frontend, in case the PHP backend dynamically evaluates them.
+    if (import.meta.env.VITE_GCP_CLIENT_EMAIL) {
+      payload.gcp_client_email = import.meta.env.VITE_GCP_CLIENT_EMAIL;
+      payload.gcp_private_key = import.meta.env.VITE_GCP_PRIVATE_KEY;
+    }
+
+    const res = await axios.post('https://matricula.casitaapps.com/api/meal-menus/notify-parents', payload)
 
     const data = res.data || {};
     const sentCount = data.sentCount || 0;
