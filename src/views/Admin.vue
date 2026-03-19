@@ -547,9 +547,14 @@ const fetchData = async () => {
     const res = await axios.get(`https://matricula.casitaapps.com/fetch-servicios-data?plantel=${plantel.value}`)
     
     const cleanedData = {};
+    const rawAllStudents = [];
+    
     if (res.data[plantel.value]) {
       cleanedData[plantel.value] = {};
       for (const [srv, list] of Object.entries(res.data[plantel.value])) {
+        if (list && Array.isArray(list)) {
+          rawAllStudents.push(...list);
+        }
         if (allServiciosList.includes(srv.toUpperCase())) {
           cleanedData[plantel.value][srv] = list;
         }
@@ -557,7 +562,7 @@ const fetchData = async () => {
     }
     globalData.value = cleanedData;
     
-    const all = Object.values(cleanedData[plantel.value] || {}).flat().filter(s => s)
+    const all = rawAllStudents.filter(s => s)
     allStudentsList.value = Array.from(new Map(all.map(s => [s.matricula, s])).values())
 
     if (servicio.value) {
